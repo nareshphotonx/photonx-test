@@ -526,6 +526,41 @@ export const DEFAULT_PERMISSION_DEFINITIONS: Array<{
     name: 'Read WhatsApp Messages',
     description: 'Read WhatsApp messages',
   },
+  {
+    code: PERMISSIONS.AI_CHAT,
+    name: 'AI Chat',
+    description: 'Use AI chat assistant endpoint',
+  },
+  {
+    code: PERMISSIONS.AI_TOOLS_READ,
+    name: 'Read AI Tool Catalog',
+    description: 'Read AI tool registry metadata',
+  },
+  {
+    code: PERMISSIONS.AI_MESSAGES_READ,
+    name: 'Read AI Messages',
+    description: 'Read AI chat history',
+  },
+  {
+    code: PERMISSIONS.DOCUMENTS_CREATE,
+    name: 'Create Documents',
+    description: 'Create tenant document sources',
+  },
+  {
+    code: PERMISSIONS.DOCUMENTS_READ,
+    name: 'Read Documents',
+    description: 'Read tenant document sources',
+  },
+  {
+    code: PERMISSIONS.DOCUMENTS_SEARCH,
+    name: 'Search Documents',
+    description: 'Run tenant-scoped document search',
+  },
+  {
+    code: PERMISSIONS.DOCUMENTS_DELETE,
+    name: 'Delete Documents',
+    description: 'Delete tenant document sources',
+  },
 ];
 
 export const DEFAULT_ROLE_PERMISSION_CODES: Record<Role, PermissionCode[]> = {
@@ -640,6 +675,13 @@ export const DEFAULT_ROLE_PERMISSION_CODES: Record<Role, PermissionCode[]> = {
     PERMISSIONS.INTEGRATIONS_WHATSAPP_TEMPLATE_SEND,
     PERMISSIONS.INTEGRATIONS_WHATSAPP_SESSIONS_READ,
     PERMISSIONS.INTEGRATIONS_WHATSAPP_MESSAGES_READ,
+    PERMISSIONS.AI_CHAT,
+    PERMISSIONS.AI_TOOLS_READ,
+    PERMISSIONS.AI_MESSAGES_READ,
+    PERMISSIONS.DOCUMENTS_CREATE,
+    PERMISSIONS.DOCUMENTS_READ,
+    PERMISSIONS.DOCUMENTS_SEARCH,
+    PERMISSIONS.DOCUMENTS_DELETE,
   ],
   [Role.USER]: [
     PERMISSIONS.TENANTS_READ_CURRENT,
@@ -677,5 +719,10 @@ export const DEFAULT_ROLE_PERMISSION_CODES: Record<Role, PermissionCode[]> = {
     PERMISSIONS.EXPENSES_READ,
     PERMISSIONS.NOTIFICATIONS_READ,
     PERMISSIONS.NOTIFICATIONS_MARK_READ,
+    PERMISSIONS.AI_CHAT,
+    PERMISSIONS.AI_TOOLS_READ,
+    PERMISSIONS.AI_MESSAGES_READ,
+    PERMISSIONS.DOCUMENTS_READ,
+    PERMISSIONS.DOCUMENTS_SEARCH,
   ],
 };

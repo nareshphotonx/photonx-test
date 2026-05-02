@@ -133,6 +133,15 @@ export const PERMISSIONS = {
   INTEGRATIONS_WHATSAPP_TEMPLATE_SEND: 'integrations:whatsapp:template:send',
   INTEGRATIONS_WHATSAPP_SESSIONS_READ: 'integrations:whatsapp:sessions:read',
   INTEGRATIONS_WHATSAPP_MESSAGES_READ: 'integrations:whatsapp:messages:read',
+
+  AI_CHAT: 'ai:chat',
+  AI_TOOLS_READ: 'ai:tools:read',
+  AI_MESSAGES_READ: 'ai:messages:read',
+
+  DOCUMENTS_CREATE: 'documents:create',
+  DOCUMENTS_READ: 'documents:read',
+  DOCUMENTS_SEARCH: 'documents:search',
+  DOCUMENTS_DELETE: 'documents:delete',
 } as const;
 
 export type PermissionCode =

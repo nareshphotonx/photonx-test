@@ -7,6 +7,7 @@ NestJS backend for PhotonX WorkOS (WhatsApp-first HRMS + project OS), currently 
 - Phase 3: time tracking + project costing
 - Phase 4: HRMS modules (attendance, leave/WFH, holidays, expenses, approvals)
 - Phase 5: integrations + notification system (WhatsApp, GitHub, Slack, email)
+- Phase 6: AI agent + tenant-safe document RAG
 
 ## Stack
 
@@ -48,6 +49,11 @@ S3 attachment endpoints require valid AWS values in `.env`:
 
 Integration and notification encryption/test features require:
 `APP_ENCRYPTION_KEY`, `WHATSAPP_TEST_SECRET`.
+
+AI endpoints and RAG require:
+`OPENAI_API_KEY`, `OPENAI_CHAT_MODEL`, `OPENAI_EMBED_MODEL`,
+`AI_CONFIDENCE_THRESHOLD`, `AI_CACHE_TTL_SEC`, `AI_CHUNK_SIZE`,
+`AI_CHUNK_OVERLAP`, `AI_SEARCH_TOP_K`.
 
 3. Start infra (MySQL + Redis):
 
@@ -122,6 +128,8 @@ corepack pnpm dev
 - GitHub integrations: `/api/integrations/github/*`
 - Slack integration: `/api/integrations/slack/settings`
 - Email integration: `/api/integrations/email/settings`
+- AI agent: `/api/ai/chat`, `/api/ai/tools`, `/api/ai/messages`
+- Documents: `/api/documents/*`
 - Webhooks (no `/api` prefix): `/webhooks/whatsapp`, `/webhooks/github`
 
 ## WhatsApp Command Test

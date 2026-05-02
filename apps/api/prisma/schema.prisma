@@ -132,6 +132,30 @@ enum GitHubWebhookEventStatus {
   FAILED
 }
 
+enum AiMessageRole {
+  USER
+  ASSISTANT
+}
+
+enum AiMessageStatus {
+  COMPLETED
+  FALLBACK
+  BLOCKED
+  FAILED
+}
+
+enum AiToolCallStatus {
+  SUCCESS
+  FAILED
+  SKIPPED
+}
+
+enum DocumentType {
+  POLICY
+  SOP
+  GENERAL
+}
+
 enum TimeEntrySource {
   MANUAL
   WHATSAPP
@@ -246,6 +270,12 @@ model Tenant {
   githubIdentityMappings  GitHubIdentityMap[]
   githubCommitMappings    GitHubCommitMapping[]
   githubUnmatchedCommits  GitHubUnmatchedCommit[]
+  aiConversations         AiConversation[]
+  aiMessages              AiMessage[]
+  aiToolCalls             AiToolCall[]
+  aiPromptLogs            AiPromptLog[]
+  documents               Document[]
+  documentChunks          DocumentChunk[]
   timeEntries             TimeEntry[]
   timeEntryUnlocks        TimeEntryUnlock[]
   rateCards               RateCard[]
@@ -314,6 +344,10 @@ model User {
   githubIdentityMappings  GitHubIdentityMap[]
   githubCommitMappings    GitHubCommitMapping[]
   githubUnmatchedCommits  GitHubUnmatchedCommit[] @relation("GitHubUnmatchedAuthor")
+  aiConversations         AiConversation[]
+  aiMessages              AiMessage[]
+  aiPromptLogs            AiPromptLog[]
+  createdDocuments        Document[]
   recurringTemplates      RecurringTaskTemplate[]  @relation("RecurringTemplateAssignee")
   timeEntries             TimeEntry[]
   timeEntryUnlocks        TimeEntryUnlock[]        @relation("TimeEntryUnlockActor")
@@ -1520,6 +1554,134 @@ model GitHubUnmatchedCommit {
   @@index([tenantId, mappedAt, createdAt])
   @@index([tenantId, authorLogin, authorEmail])
   @@index([tenantId, authorUserId, createdAt])
+}
+
+model AiConversation {
+  id        String      @id @default(cuid())
+  tenantId  String
+  userId    String
+  title     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  AiMessage[]
+  promptLogs AiPromptLog[]
+
+  @@index([tenantId, userId, createdAt])
+}
+
+model AiMessage {
+  id             String          @id @default(cuid())
+  tenantId       String
+  conversationId String
+  userId         String
+  role           AiMessageRole
+  prompt         String?         @db.Text
+  answer         String?         @db.Text
+  intent         String?
+  confidence     Float?
+  sources        Json?
+  status         AiMessageStatus @default(COMPLETED)
+  cacheKey       String?
+  cacheHit       Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversation   AiConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  toolCalls      AiToolCall[]
+  promptLogs     AiPromptLog[]
+
+  @@index([tenantId, userId, createdAt])
+  @@index([tenantId, conversationId, createdAt])
+  @@index([tenantId, cacheKey])
+}
+
+model AiPromptLog {
+  id                  String          @id @default(cuid())
+  tenantId            String
+  conversationId      String
+  userId              String
+  messageId           String?
+  normalizedPrompt    String          @db.Text
+  promptInjectionMeta Json?
+  selectedIntent      String?
+  toolPlan            Json?
+  finalResultSummary  Json?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  tenant              Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversation        AiConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message             AiMessage?      @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  toolCalls           AiToolCall[]
+
+  @@index([tenantId, userId, createdAt])
+  @@index([tenantId, conversationId, createdAt])
+}
+
+model AiToolCall {
+  id              String           @id @default(cuid())
+  tenantId        String
+  messageId       String
+  promptLogId     String?
+  toolName        String
+  input           Json
+  output          Json?
+  numericEvidence Json?
+  status          AiToolCallStatus @default(SUCCESS)
+  success         Boolean          @default(true)
+  error           String?
+  durationMs      Int?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  message         AiMessage        @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  promptLog       AiPromptLog?     @relation(fields: [promptLogId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, toolName, createdAt])
+  @@index([tenantId, messageId, createdAt])
+}
+
+model Document {
+  id           String        @id @default(cuid())
+  tenantId     String
+  createdById  String
+  title        String
+  documentType DocumentType
+  tags         Json?
+  content      String        @db.LongText
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deletedAt    DateTime?
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy    User          @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  chunks       DocumentChunk[]
+
+  @@index([tenantId, documentType])
+  @@index([tenantId, deletedAt])
+  @@index([tenantId, createdAt])
+}
+
+model DocumentChunk {
+  id         String   @id @default(cuid())
+  tenantId   String
+  documentId String
+  chunkIndex Int
+  content    String   @db.LongText
+  tokenCount Int
+  embedding  Json?
+  contentHash String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, documentId, chunkIndex])
+  @@index([tenantId, documentId, chunkIndex])
+  @@index([tenantId, createdAt])
+  @@fulltext([content])
 }
 
 model AuditLog {

@@ -23,6 +23,7 @@ import { AttendanceModule } from './modules/attendance/attendance.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { NotificationPreferencesModule } from './modules/notification-preferences/notification-preferences.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { AiAgentModule } from './modules/ai-agent/ai-agent.module';
 import { OfficePolicyModule } from './modules/office-policy/office-policy.module';
 import { HolidaysModule } from './modules/holidays/holidays.module';
 import { IntegrationsModule } from './modules/integrations/integrations.module';
@@ -41,6 +42,7 @@ import { TenantModule } from './modules/tenant/tenant.module';
 import { TeamsModule } from './modules/teams/teams.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { UsersModule } from './modules/users/users.module';
+import { DocumentsModule } from './modules/documents/documents.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { WfhModule } from './modules/wfh/wfh.module';
 
@@ -80,6 +82,8 @@ import { WfhModule } from './modules/wfh/wfh.module';
     RecurringTaskTemplatesModule,
     IntegrationsModule,
     WebhooksModule,
+    AiAgentModule,
+    DocumentsModule,
   ],
   providers: [
     AppLogger,
