@@ -1,0 +1,16 @@
+{
+  "name": "photonx-workos",
+  "private": true,
+  "version": "0.1.0",
+  "description": "PhotonX WorkOS monorepo",
+  "packageManager": "pnpm@10.11.0",
+  "scripts": {
+    "dev": "corepack pnpm --filter @photonx/api dev",
+    "build": "corepack pnpm --filter @photonx/api build",
+    "lint": "corepack pnpm --filter @photonx/api lint",
+    "test": "corepack pnpm --filter @photonx/api test",
+    "prisma:generate": "corepack pnpm --filter @photonx/api prisma:generate",
+    "prisma:migrate": "corepack pnpm --filter @photonx/api prisma:migrate",
+    "prisma:studio": "corepack pnpm --filter @photonx/api prisma:studio"
+  }
+}
