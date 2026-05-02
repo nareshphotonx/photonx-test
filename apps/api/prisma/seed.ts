@@ -1,4 +1,5 @@
 import {
+  IntegrationType,
   MilestoneStatus,
   Prisma,
   PrismaClient,
@@ -8,6 +9,7 @@ import {
   TaskPriority,
   WorkWeekStart,
 } from '@prisma/client';
+import { createCipheriv, createHash, randomBytes } from 'crypto';
 import { hashPassword } from '../src/common/security/password.util';
 import {
   DEFAULT_PERMISSION_DEFINITIONS,
@@ -17,6 +19,19 @@ import {
 import { Role } from '../src/common/enums/role.enum';
 
 const prisma = new PrismaClient();
+
+function encryptSecrets(payload: Record<string, string>): string {
+  const source = process.env.APP_ENCRYPTION_KEY ?? 'photonx-dev-encryption-key';
+  const key = createHash('sha256').update(source).digest();
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([
+    cipher.update(JSON.stringify(payload), 'utf8'),
+    cipher.final(),
+  ]);
+  const tag = cipher.getAuthTag();
+  return `${iv.toString('base64')}:${tag.toString('base64')}:${encrypted.toString('base64')}`;
+}
 
 async function seedTenantRbac(tenantId: string): Promise<void> {
   await prisma.role.createMany({
@@ -1143,6 +1158,198 @@ async function seed(): Promise<void> {
       },
     });
   }
+
+  const integrationSeeds: Array<{
+    type: IntegrationType;
+    enabled: boolean;
+    config: Record<string, unknown>;
+    secrets: Record<string, string>;
+  }> = [
+    {
+      type: IntegrationType.WHATSAPP,
+      enabled: true,
+      config: {
+        apiVersion: 'v20.0',
+        phoneNumberId: '100000000000001',
+        wabaId: '100000000000001',
+        utilityTemplateName: 'utility_notification',
+      },
+      secrets: {
+        verifyToken: 'photonx-whatsapp-verify-token',
+        appSecret: 'photonx-whatsapp-app-secret',
+        accessToken: 'photonx-whatsapp-access-token',
+      },
+    },
+    {
+      type: IntegrationType.GITHUB,
+      enabled: true,
+      config: {
+        taskKeyRegex: 'T-\\d+',
+        botUsernames: ['dependabot[bot]', 'github-actions[bot]'],
+      },
+      secrets: {
+        webhookSecret: 'photonx-github-webhook-secret',
+      },
+    },
+    {
+      type: IntegrationType.SLACK,
+      enabled: false,
+      config: {
+        defaultChannel: '#engineering-alerts',
+      },
+      secrets: {
+        webhookUrl: 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX',
+      },
+    },
+    {
+      type: IntegrationType.EMAIL,
+      enabled: false,
+      config: {
+        smtpHost: 'smtp.mailtrap.io',
+        smtpPort: 587,
+        secure: false,
+        fromEmail: 'alerts@photonx.dev',
+      },
+      secrets: {
+        smtpUser: 'photonx-smtp-user',
+        smtpPassword: 'photonx-smtp-password',
+      },
+    },
+  ];
+
+  for (const setting of integrationSeeds) {
+    await prisma.integrationSetting.upsert({
+      where: {
+        tenantId_type: {
+          tenantId: tenant.id,
+          type: setting.type,
+        },
+      },
+      create: {
+        tenantId: tenant.id,
+        type: setting.type,
+        enabled: setting.enabled,
+        config: setting.config as Prisma.InputJsonValue,
+        encryptedSecrets: encryptSecrets(setting.secrets),
+        createdBy: superAdmin.id,
+        updatedBy: superAdmin.id,
+      },
+      update: {
+        enabled: setting.enabled,
+        config: setting.config as Prisma.InputJsonValue,
+        encryptedSecrets: encryptSecrets(setting.secrets),
+        updatedBy: superAdmin.id,
+      },
+    });
+  }
+
+  await prisma.gitHubIdentityMap.upsert({
+    where: {
+      tenantId_kind_value: {
+        tenantId: tenant.id,
+        kind: 'USERNAME',
+        value: 'superadmin-photonx',
+      },
+    },
+    create: {
+      tenantId: tenant.id,
+      userId: superAdmin.id,
+      kind: 'USERNAME',
+      value: 'superadmin-photonx',
+      isActive: true,
+    },
+    update: {
+      userId: superAdmin.id,
+      isActive: true,
+    },
+  });
+
+  await prisma.gitHubIdentityMap.upsert({
+    where: {
+      tenantId_kind_value: {
+        tenantId: tenant.id,
+        kind: 'USERNAME',
+        value: 'teamlead-photonx',
+      },
+    },
+    create: {
+      tenantId: tenant.id,
+      userId: teamLead.id,
+      kind: 'USERNAME',
+      value: 'teamlead-photonx',
+      isActive: true,
+    },
+    update: {
+      userId: teamLead.id,
+      isActive: true,
+    },
+  });
+
+  await prisma.gitHubIdentityMap.upsert({
+    where: {
+      tenantId_kind_value: {
+        tenantId: tenant.id,
+        kind: 'EMAIL',
+        value: 'user@photonx.dev',
+      },
+    },
+    create: {
+      tenantId: tenant.id,
+      userId: normalUser.id,
+      kind: 'EMAIL',
+      value: 'user@photonx.dev',
+      isActive: true,
+    },
+    update: {
+      userId: normalUser.id,
+      isActive: true,
+    },
+  });
+
+  await prisma.notificationEvent.upsert({
+    where: {
+      tenantId_eventKey: {
+        tenantId: tenant.id,
+        eventKey: 'seed-integration-ready:super-admin',
+      },
+    },
+    create: {
+      tenantId: tenant.id,
+      userId: superAdmin.id,
+      eventKey: 'seed-integration-ready:super-admin',
+      eventType: 'SYSTEM_BOOTSTRAP',
+      title: 'Phase 5 integrations seeded',
+      body: 'WhatsApp/GitHub/Slack/Email settings are ready for tenant configuration.',
+      channel: 'IN_APP',
+      source: 'SYSTEM',
+      payload: {
+        phase: 5,
+      },
+      metadata: {
+        seeded: true,
+      },
+      status: 'SENT',
+      isRead: false,
+      attempts: 1,
+      processedAt: new Date(),
+    },
+    update: {
+      title: 'Phase 5 integrations seeded',
+      body: 'WhatsApp/GitHub/Slack/Email settings are ready for tenant configuration.',
+      channel: 'IN_APP',
+      source: 'SYSTEM',
+      payload: {
+        phase: 5,
+      },
+      metadata: {
+        seeded: true,
+      },
+      status: 'SENT',
+      isRead: false,
+      attempts: 1,
+      processedAt: new Date(),
+    },
+  });
 
   const superAdminRoleRecord = await prisma.role.findFirst({
     where: {

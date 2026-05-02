@@ -13,6 +13,7 @@ import {
 } from '@prisma/client';
 import { Role } from '../../common/enums/role.enum';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { RequestCodeService } from '../../common/services/request-code.service';
 import { AuditService } from '../audit/audit.service';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { CreateExpenseCategoryDto } from './dto/create-expense-category.dto';
@@ -27,6 +28,7 @@ export class ExpensesService {
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     private readonly approvalsService: ApprovalsService,
+    private readonly requestCodeService: RequestCodeService,
   ) {}
 
   async createCategory(
@@ -220,9 +222,12 @@ export class ExpensesService {
       }
     }
 
+    const requestCode = await this.requestCodeService.next(tenantId, 'expense');
+
     const expense = await this.prisma.expense.create({
       data: {
         tenantId,
+        requestCode,
         userId: actor.sub,
         projectId: dto.projectId,
         categoryId: dto.categoryId,

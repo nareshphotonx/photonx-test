@@ -8,7 +8,9 @@ import {
 import { InjectQueue } from '@nestjs/bullmq';
 import {
   DependencyType,
+  NotificationChannel,
   NotificationEventStatus,
+  NotificationSource,
   Prisma,
   TaskPriority,
 } from '@prisma/client';
@@ -903,8 +905,10 @@ export class TasksService {
         .map((mentionedUserId) => ({
           tenantId,
           userId: mentionedUserId,
+          eventKey: `task-comment-mention:${createdComment.id}:${mentionedUserId}`,
           eventType: 'TASK_COMMENT_MENTION',
-          channel: 'IN_APP',
+          channel: NotificationChannel.IN_APP,
+          source: NotificationSource.SYSTEM,
           payload: {
             taskId: task.id,
             taskKey: task.key,

@@ -6,6 +6,7 @@ NestJS backend for PhotonX WorkOS (WhatsApp-first HRMS + project OS), currently 
 - Phase 2: projects/tasks/workflow foundation
 - Phase 3: time tracking + project costing
 - Phase 4: HRMS modules (attendance, leave/WFH, holidays, expenses, approvals)
+- Phase 5: integrations + notification system (WhatsApp, GitHub, Slack, email)
 
 ## Stack
 
@@ -44,6 +45,9 @@ cp .env.example .env
 
 S3 attachment endpoints require valid AWS values in `.env`:
 `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_S3_BUCKET`.
+
+Integration and notification encryption/test features require:
+`APP_ENCRYPTION_KEY`, `WHATSAPP_TEST_SECRET`.
 
 3. Start infra (MySQL + Redis):
 
@@ -86,6 +90,10 @@ corepack pnpm dev
 - Health: `GET /health`
 - Swagger UI: `GET /api/docs`
 - OpenAPI JSON: `GET /api/docs-json`
+- Root webhooks (excluded from `/api` prefix):
+  - `GET /webhooks/whatsapp`
+  - `POST /webhooks/whatsapp`
+  - `POST /webhooks/github`
 
 ## Endpoint Groups
 
@@ -109,6 +117,27 @@ corepack pnpm dev
 - Holidays: `/api/holidays/*`
 - Expenses: `/api/expense-categories`, `/api/expense-policies`, `/api/expenses/*`
 - Approvals: `/api/approvals/*`
+- Notifications: `/api/notifications/*`
+- WhatsApp operations: `/api/whatsapp/*`
+- GitHub integrations: `/api/integrations/github/*`
+- Slack integration: `/api/integrations/slack/settings`
+- Email integration: `/api/integrations/email/settings`
+- Webhooks (no `/api` prefix): `/webhooks/whatsapp`, `/webhooks/github`
+
+## WhatsApp Command Test
+
+Public test endpoint:
+
+```bash
+curl -X POST http://localhost:3000/api/whatsapp/test-command \
+  -H "Content-Type: application/json" \
+  -H "x-whatsapp-test-secret: $WHATSAPP_TEST_SECRET" \
+  -d '{
+    "tenantSlug": "photonx-default",
+    "userPhone": "+919900000002",
+    "command": "tasks"
+  }'
+```
 
 ## Seed Credentials
 
