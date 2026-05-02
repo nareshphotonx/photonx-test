@@ -9,8 +9,16 @@ describe('LeaveService', () => {
 
   const auditService = { log: jest.fn() } as any;
   const approvalsService = {} as any;
+  const requestCodeService = {
+    next: jest.fn().mockResolvedValue(1),
+  } as any;
 
-  const service = new LeaveService(prisma, auditService, approvalsService);
+  const service = new LeaveService(
+    prisma,
+    auditService,
+    approvalsService,
+    requestCodeService,
+  );
 
   const actor: Express.User = {
     sub: 'user_1',

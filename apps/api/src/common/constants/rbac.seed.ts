@@ -461,6 +461,71 @@ export const DEFAULT_PERMISSION_DEFINITIONS: Array<{
     name: 'Reject Requests',
     description: 'Reject approval requests',
   },
+  {
+    code: PERMISSIONS.NOTIFICATIONS_SEND,
+    name: 'Send Notifications',
+    description: 'Create notification events and deliveries',
+  },
+  {
+    code: PERMISSIONS.NOTIFICATIONS_READ,
+    name: 'Read Notifications',
+    description: 'Read own notification inbox',
+  },
+  {
+    code: PERMISSIONS.NOTIFICATIONS_MARK_READ,
+    name: 'Mark Notifications Read',
+    description: 'Mark own notifications as read',
+  },
+  {
+    code: PERMISSIONS.INTEGRATIONS_GITHUB_SETTINGS_WRITE,
+    name: 'Manage GitHub Settings',
+    description: 'Create/update GitHub integration settings',
+  },
+  {
+    code: PERMISSIONS.INTEGRATIONS_GITHUB_SETTINGS_READ,
+    name: 'Read GitHub Settings',
+    description: 'Read GitHub integration settings',
+  },
+  {
+    code: PERMISSIONS.INTEGRATIONS_GITHUB_UNMATCHED_READ,
+    name: 'Read GitHub Unmatched Commits',
+    description: 'Read unmatched GitHub commits',
+  },
+  {
+    code: PERMISSIONS.INTEGRATIONS_GITHUB_UNMATCHED_MAP,
+    name: 'Map GitHub Unmatched Commits',
+    description: 'Map unmatched GitHub commits to tasks',
+  },
+  {
+    code: PERMISSIONS.INTEGRATIONS_GITHUB_EVENTS_READ,
+    name: 'Read GitHub Events',
+    description: 'Read GitHub webhook events',
+  },
+  {
+    code: PERMISSIONS.INTEGRATIONS_SLACK_SETTINGS_WRITE,
+    name: 'Manage Slack Settings',
+    description: 'Create/update Slack integration settings',
+  },
+  {
+    code: PERMISSIONS.INTEGRATIONS_EMAIL_SETTINGS_WRITE,
+    name: 'Manage Email Settings',
+    description: 'Create/update email integration settings',
+  },
+  {
+    code: PERMISSIONS.INTEGRATIONS_WHATSAPP_TEMPLATE_SEND,
+    name: 'Send WhatsApp Templates',
+    description: 'Send WhatsApp utility templates',
+  },
+  {
+    code: PERMISSIONS.INTEGRATIONS_WHATSAPP_SESSIONS_READ,
+    name: 'Read WhatsApp Sessions',
+    description: 'Read WhatsApp sessions',
+  },
+  {
+    code: PERMISSIONS.INTEGRATIONS_WHATSAPP_MESSAGES_READ,
+    name: 'Read WhatsApp Messages',
+    description: 'Read WhatsApp messages',
+  },
 ];
 
 export const DEFAULT_ROLE_PERMISSION_CODES: Record<Role, PermissionCode[]> = {
@@ -562,6 +627,19 @@ export const DEFAULT_ROLE_PERMISSION_CODES: Record<Role, PermissionCode[]> = {
     PERMISSIONS.APPROVALS_HISTORY_READ,
     PERMISSIONS.APPROVALS_APPROVE,
     PERMISSIONS.APPROVALS_REJECT,
+    PERMISSIONS.NOTIFICATIONS_SEND,
+    PERMISSIONS.NOTIFICATIONS_READ,
+    PERMISSIONS.NOTIFICATIONS_MARK_READ,
+    PERMISSIONS.INTEGRATIONS_GITHUB_SETTINGS_WRITE,
+    PERMISSIONS.INTEGRATIONS_GITHUB_SETTINGS_READ,
+    PERMISSIONS.INTEGRATIONS_GITHUB_UNMATCHED_READ,
+    PERMISSIONS.INTEGRATIONS_GITHUB_UNMATCHED_MAP,
+    PERMISSIONS.INTEGRATIONS_GITHUB_EVENTS_READ,
+    PERMISSIONS.INTEGRATIONS_SLACK_SETTINGS_WRITE,
+    PERMISSIONS.INTEGRATIONS_EMAIL_SETTINGS_WRITE,
+    PERMISSIONS.INTEGRATIONS_WHATSAPP_TEMPLATE_SEND,
+    PERMISSIONS.INTEGRATIONS_WHATSAPP_SESSIONS_READ,
+    PERMISSIONS.INTEGRATIONS_WHATSAPP_MESSAGES_READ,
   ],
   [Role.USER]: [
     PERMISSIONS.TENANTS_READ_CURRENT,
@@ -597,5 +675,7 @@ export const DEFAULT_ROLE_PERMISSION_CODES: Record<Role, PermissionCode[]> = {
     PERMISSIONS.EXPENSE_CATEGORIES_READ,
     PERMISSIONS.EXPENSES_CREATE,
     PERMISSIONS.EXPENSES_READ,
+    PERMISSIONS.NOTIFICATIONS_READ,
+    PERMISSIONS.NOTIFICATIONS_MARK_READ,
   ],
 };

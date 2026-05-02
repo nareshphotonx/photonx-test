@@ -59,6 +59,79 @@ enum NotificationEventStatus {
   FAILED
 }
 
+enum NotificationChannel {
+  WHATSAPP
+  EMAIL
+  SLACK
+  IN_APP
+}
+
+enum NotificationSource {
+  SYSTEM
+  WHATSAPP
+  GITHUB
+  SLACK
+  EMAIL
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum IntegrationType {
+  WHATSAPP
+  GITHUB
+  SLACK
+  EMAIL
+}
+
+enum WhatsAppSessionState {
+  IDLE
+  ACTIVE
+  AWAITING_CONFIRMATION
+}
+
+enum WhatsAppMessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum WhatsAppMessageType {
+  TEXT
+  TEMPLATE
+  INTERACTIVE
+  COMMAND
+}
+
+enum WhatsAppMessageStatus {
+  RECEIVED
+  PROCESSED
+  QUEUED
+  SENT
+  FAILED
+}
+
+enum GitHubIdentityKind {
+  USERNAME
+  EMAIL
+}
+
+enum GitHubWebhookEventStatus {
+  RECEIVED
+  PROCESSED
+  DUPLICATE
+  FAILED
+}
+
 enum TimeEntrySource {
   MANUAL
   WHATSAPP
@@ -165,6 +238,14 @@ model Tenant {
   taskAttachments         TaskAttachment[]
   recurringTaskTemplates  RecurringTaskTemplate[]
   notificationEvents      NotificationEvent[]
+  notificationDeliveries  NotificationDelivery[]
+  integrationSettings     IntegrationSetting[]
+  whatsappSessions        WhatsAppSession[]
+  whatsappMessages        WhatsAppMessage[]
+  githubWebhookEvents     GitHubWebhookEvent[]
+  githubIdentityMappings  GitHubIdentityMap[]
+  githubCommitMappings    GitHubCommitMapping[]
+  githubUnmatchedCommits  GitHubUnmatchedCommit[]
   timeEntries             TimeEntry[]
   timeEntryUnlocks        TimeEntryUnlock[]
   rateCards               RateCard[]
@@ -227,6 +308,12 @@ model User {
   mentionedInComments     TaskCommentMention[]     @relation("TaskCommentMentionedUser")
   uploadedTaskAttachments TaskAttachment[]         @relation("TaskAttachmentUploader")
   notificationEvents      NotificationEvent[]
+  notificationDeliveries  NotificationDelivery[]
+  whatsappSessions        WhatsAppSession[]
+  whatsappMessages        WhatsAppMessage[]
+  githubIdentityMappings  GitHubIdentityMap[]
+  githubCommitMappings    GitHubCommitMapping[]
+  githubUnmatchedCommits  GitHubUnmatchedCommit[] @relation("GitHubUnmatchedAuthor")
   recurringTemplates      RecurringTaskTemplate[]  @relation("RecurringTemplateAssignee")
   timeEntries             TimeEntry[]
   timeEntryUnlocks        TimeEntryUnlock[]        @relation("TimeEntryUnlockActor")
@@ -246,6 +333,7 @@ model User {
   optionalHolidayQuotaOverrides OptionalHolidayUserQuotaOverride[]
   expenses                Expense[]                @relation("ExpenseSubmitter")
   actedExpenses           Expense[]                @relation("ExpenseActor")
+  mappedUnmatchedCommits  GitHubUnmatchedCommit[] @relation("GitHubUnmatchedMapper")
   requestedApprovals      ApprovalRequest[]        @relation("ApprovalRequester")
   assignedApprovalSteps   ApprovalStep[]           @relation("ApprovalStepApprover")
   actedApprovalSteps      ApprovalStep[]           @relation("ApprovalStepActor")
@@ -620,6 +708,8 @@ model Task {
   requiredBy           TaskDependency[]       @relation("TaskRequiredBy")
   comments             TaskComment[]
   attachments          TaskAttachment[]
+  githubCommitMappings GitHubCommitMapping[]
+  githubUnmatchedCommits GitHubUnmatchedCommit[] @relation("GitHubUnmatchedTask")
   timeEntries          TimeEntry[]
   recurringTemplate    RecurringTaskTemplate? @relation(fields: [recurringTemplateId], references: [id], onDelete: SetNull)
 
@@ -894,6 +984,7 @@ model AttendanceEvent {
 model AttendanceRegularizationRequest {
   id                 String         @id @default(cuid())
   tenantId           String
+  requestCode        Int?
   userId             String
   attendanceDayId    String
   correctedCheckInAt DateTime
@@ -912,6 +1003,7 @@ model AttendanceRegularizationRequest {
 
   @@index([tenantId, userId, status])
   @@index([tenantId, attendanceDayId])
+  @@unique([tenantId, requestCode])
 }
 
 model LeaveType {
@@ -987,6 +1079,7 @@ model LeaveAccrualLedger {
 model LeaveRequest {
   id               String            @id @default(cuid())
   tenantId         String
+  requestCode      Int?
   userId           String
   leaveTypeId      String
   startDate        DateTime
@@ -1007,6 +1100,7 @@ model LeaveRequest {
 
   @@index([tenantId, userId, status])
   @@index([tenantId, startDate, endDate])
+  @@unique([tenantId, requestCode])
 }
 
 model WfhPolicy {
@@ -1035,6 +1129,7 @@ model WfhUserQuotaOverride {
 model WfhRequest {
   id            String           @id @default(cuid())
   tenantId      String
+  requestCode   Int?
   userId        String
   requestDate   DateTime
   reason        String
@@ -1051,6 +1146,7 @@ model WfhRequest {
 
   @@index([tenantId, userId, status])
   @@index([tenantId, requestDate])
+  @@unique([tenantId, requestCode])
 }
 
 model Holiday {
@@ -1136,6 +1232,7 @@ model ExpensePolicy {
 model Expense {
   id                   String        @id @default(cuid())
   tenantId             String
+  requestCode          Int?
   userId               String
   projectId            String
   categoryId           String
@@ -1161,6 +1258,7 @@ model Expense {
   @@index([tenantId, userId, status])
   @@index([tenantId, projectId, expenseDate])
   @@index([tenantId, categoryId])
+  @@unique([tenantId, requestCode])
 }
 
 model ApprovalRequest {
@@ -1209,9 +1307,17 @@ model NotificationEvent {
   id          String                  @id @default(cuid())
   tenantId    String
   userId      String
+  eventKey    String
   eventType   String
-  channel     String
+  title       String?
+  body        String?
+  channel     NotificationChannel
+  source      NotificationSource      @default(SYSTEM)
+  priority    NotificationPriority    @default(NORMAL)
   payload     Json
+  metadata    Json?
+  isRead      Boolean                 @default(false)
+  readAt      DateTime?
   status      NotificationEventStatus @default(PENDING)
   attempts    Int                     @default(0)
   processedAt DateTime?
@@ -1219,9 +1325,201 @@ model NotificationEvent {
   updatedAt   DateTime                @updatedAt
   tenant      Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries  NotificationDelivery[]
 
+  @@unique([tenantId, eventKey])
   @@index([tenantId, userId, status])
+  @@index([tenantId, userId, isRead, createdAt])
   @@index([tenantId, eventType])
+}
+
+model NotificationDelivery {
+  id                 String                     @id @default(cuid())
+  tenantId           String
+  eventId            String
+  userId             String
+  channel            NotificationChannel
+  status             NotificationDeliveryStatus @default(PENDING)
+  dedupeKey          String
+  attemptCount       Int                        @default(0)
+  providerMessageId  String?
+  providerResponse   Json?
+  errorMessage       String?
+  lastAttemptAt      DateTime?
+  deliveredAt        DateTime?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+  tenant             Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event              NotificationEvent          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, dedupeKey])
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, eventId, channel])
+  @@index([tenantId, userId, channel, status])
+}
+
+model IntegrationSetting {
+  id               String          @id @default(cuid())
+  tenantId         String
+  type             IntegrationType
+  enabled          Boolean         @default(true)
+  config           Json?
+  encryptedSecrets String?         @db.Text
+  createdBy        String?
+  updatedBy        String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  tenant           Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  githubEvents     GitHubWebhookEvent[]
+
+  @@unique([tenantId, type])
+  @@index([tenantId, enabled])
+}
+
+model WhatsAppSession {
+  id                   String               @id @default(cuid())
+  tenantId             String
+  userId               String
+  waUserPhone          String
+  waConversationId     String?
+  lastInboundAt        DateTime
+  lastOutboundAt       DateTime?
+  isWithin24hWindow    Boolean              @default(true)
+  state                WhatsAppSessionState @default(IDLE)
+  stateData            Json?
+  expiresAt            DateTime
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  tenant               Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages             WhatsAppMessage[]
+
+  @@unique([tenantId, userId])
+  @@index([tenantId, waUserPhone, updatedAt])
+  @@index([tenantId, expiresAt])
+}
+
+model WhatsAppMessage {
+  id                String                   @id @default(cuid())
+  tenantId          String
+  userId            String?
+  sessionId         String?
+  waUserPhone       String
+  direction         WhatsAppMessageDirection
+  messageType       WhatsAppMessageType
+  textBody          String?
+  commandName       String?
+  rawPayload        Json
+  parsedCommand     Json?
+  status            WhatsAppMessageStatus   @default(RECEIVED)
+  providerMessageId String?
+  errorMessage      String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user              User?                   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  session           WhatsAppSession?        @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, waUserPhone, createdAt])
+  @@index([tenantId, userId, createdAt])
+  @@index([tenantId, direction, status])
+}
+
+model GitHubWebhookEvent {
+  id                   String                 @id @default(cuid())
+  tenantId             String
+  integrationSettingId String?
+  deliveryId           String
+  eventType            String
+  signatureHeader      String?
+  payloadHash          String
+  headers              Json?
+  rawPayload           Json?
+  verified             Boolean                @default(false)
+  status               GitHubWebhookEventStatus @default(RECEIVED)
+  errorMessage         String?
+  receivedAt           DateTime               @default(now())
+  processedAt          DateTime?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  tenant               Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  integrationSetting   IntegrationSetting?    @relation(fields: [integrationSettingId], references: [id], onDelete: SetNull)
+  commitMappings       GitHubCommitMapping[]
+  unmatchedCommits     GitHubUnmatchedCommit[]
+
+  @@unique([tenantId, deliveryId])
+  @@index([tenantId, eventType, receivedAt])
+  @@index([tenantId, status, receivedAt])
+}
+
+model GitHubIdentityMap {
+  id         String             @id @default(cuid())
+  tenantId   String
+  userId     String
+  kind       GitHubIdentityKind
+  value      String
+  isActive   Boolean            @default(true)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, kind, value])
+  @@index([tenantId, userId, isActive])
+}
+
+model GitHubCommitMapping {
+  id               String             @id @default(cuid())
+  tenantId         String
+  taskId           String
+  userId           String?
+  sourceEventId    String?
+  commitSha        String
+  repository       String?
+  branchName       String?
+  commitMessage    String?
+  authorLogin      String?
+  authorEmail      String?
+  commitUrl        String?
+  createdAt        DateTime           @default(now())
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  task             Task               @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user             User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sourceEvent      GitHubWebhookEvent? @relation(fields: [sourceEventId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, commitSha, taskId])
+  @@index([tenantId, taskId, createdAt])
+  @@index([tenantId, userId, createdAt])
+}
+
+model GitHubUnmatchedCommit {
+  id               String             @id @default(cuid())
+  tenantId         String
+  sourceEventId    String?
+  commitSha        String
+  repository       String?
+  branchName       String?
+  commitMessage    String?
+  authorLogin      String?
+  authorEmail      String?
+  candidateText    String?
+  authorUserId     String?
+  mappedTaskId     String?
+  mappedById       String?
+  mappedAt         DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sourceEvent      GitHubWebhookEvent? @relation(fields: [sourceEventId], references: [id], onDelete: SetNull)
+  mappedTask       Task?              @relation("GitHubUnmatchedTask", fields: [mappedTaskId], references: [id], onDelete: SetNull)
+  mappedBy         User?              @relation("GitHubUnmatchedMapper", fields: [mappedById], references: [id], onDelete: SetNull)
+  author           User?              @relation("GitHubUnmatchedAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, commitSha])
+  @@index([tenantId, mappedAt, createdAt])
+  @@index([tenantId, authorLogin, authorEmail])
+  @@index([tenantId, authorUserId, createdAt])
 }
 
 model AuditLog {

@@ -11,6 +11,7 @@ import {
 } from '@prisma/client';
 import { Role } from '../../common/enums/role.enum';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { RequestCodeService } from '../../common/services/request-code.service';
 import { AuditService } from '../audit/audit.service';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { CreateWfhPolicyDto } from './dto/create-wfh-policy.dto';
@@ -25,6 +26,7 @@ export class WfhService {
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     private readonly approvalsService: ApprovalsService,
+    private readonly requestCodeService: RequestCodeService,
   ) {}
 
   async createPolicy(tenantId: string, actor: Express.User, dto: CreateWfhPolicyDto) {
@@ -153,10 +155,12 @@ export class WfhService {
     }
 
     const conflictWarnings = await this.findTeamConflicts(tenantId, actor.sub, date);
+    const requestCode = await this.requestCodeService.next(tenantId, 'wfh');
 
     const request = await this.prisma.wfhRequest.create({
       data: {
         tenantId,
+        requestCode,
         userId: actor.sub,
         requestDate: date,
         reason: dto.reason,

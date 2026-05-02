@@ -7,13 +7,21 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { AppLogger } from './common/logger/app.logger';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+    rawBody: true,
+  });
 
   const logger = app.get(AppLogger);
   app.useLogger(logger);
 
   app.setGlobalPrefix('api', {
-    exclude: [{ path: 'health', method: RequestMethod.GET }],
+    exclude: [
+      { path: 'health', method: RequestMethod.GET },
+      { path: 'webhooks/whatsapp', method: RequestMethod.GET },
+      { path: 'webhooks/whatsapp', method: RequestMethod.POST },
+      { path: 'webhooks/github', method: RequestMethod.POST },
+    ],
   });
 
   app.useGlobalPipes(

@@ -10,6 +10,7 @@ import { AppLogger } from './common/logger/app.logger';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { QueueModule } from './common/queue/queue.module';
+import { SecurityModule } from './common/security/security.module';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuditModule } from './modules/audit/audit.module';
@@ -21,8 +22,10 @@ import { ApprovalsModule } from './modules/approvals/approvals.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { NotificationPreferencesModule } from './modules/notification-preferences/notification-preferences.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { OfficePolicyModule } from './modules/office-policy/office-policy.module';
 import { HolidaysModule } from './modules/holidays/holidays.module';
+import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { LeaveModule } from './modules/leave/leave.module';
 import { MilestonesModule } from './modules/milestones/milestones.module';
 import { ProjectsModule } from './modules/projects/projects.module';
@@ -38,6 +41,7 @@ import { TenantModule } from './modules/tenant/tenant.module';
 import { TeamsModule } from './modules/teams/teams.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { UsersModule } from './modules/users/users.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { WfhModule } from './modules/wfh/wfh.module';
 
 @Module({
@@ -46,6 +50,7 @@ import { WfhModule } from './modules/wfh/wfh.module';
       isGlobal: true,
       envFilePath: ['apps/api/.env', '.env'],
     }),
+    SecurityModule,
     PrismaModule,
     QueueModule,
     AuthModule,
@@ -64,6 +69,7 @@ import { WfhModule } from './modules/wfh/wfh.module';
     ExpensesModule,
     OfficePolicyModule,
     NotificationPreferencesModule,
+    NotificationsModule,
     ProjectsModule,
     MilestonesModule,
     TaskStatusesModule,
@@ -72,6 +78,8 @@ import { WfhModule } from './modules/wfh/wfh.module';
     TimeEntriesModule,
     AttachmentsModule,
     RecurringTaskTemplatesModule,
+    IntegrationsModule,
+    WebhooksModule,
   ],
   providers: [
     AppLogger,

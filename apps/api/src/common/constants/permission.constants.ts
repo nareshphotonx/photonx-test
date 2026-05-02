@@ -116,6 +116,23 @@ export const PERMISSIONS = {
   APPROVALS_HISTORY_READ: 'approvals:history:read',
   APPROVALS_APPROVE: 'approvals:approve',
   APPROVALS_REJECT: 'approvals:reject',
+
+  NOTIFICATIONS_SEND: 'notifications:send',
+  NOTIFICATIONS_READ: 'notifications:read',
+  NOTIFICATIONS_MARK_READ: 'notifications:mark_read',
+
+  INTEGRATIONS_GITHUB_SETTINGS_WRITE: 'integrations:github:settings:write',
+  INTEGRATIONS_GITHUB_SETTINGS_READ: 'integrations:github:settings:read',
+  INTEGRATIONS_GITHUB_UNMATCHED_READ: 'integrations:github:unmatched:read',
+  INTEGRATIONS_GITHUB_UNMATCHED_MAP: 'integrations:github:unmatched:map',
+  INTEGRATIONS_GITHUB_EVENTS_READ: 'integrations:github:events:read',
+
+  INTEGRATIONS_SLACK_SETTINGS_WRITE: 'integrations:slack:settings:write',
+  INTEGRATIONS_EMAIL_SETTINGS_WRITE: 'integrations:email:settings:write',
+
+  INTEGRATIONS_WHATSAPP_TEMPLATE_SEND: 'integrations:whatsapp:template:send',
+  INTEGRATIONS_WHATSAPP_SESSIONS_READ: 'integrations:whatsapp:sessions:read',
+  INTEGRATIONS_WHATSAPP_MESSAGES_READ: 'integrations:whatsapp:messages:read',
 } as const;
 
 export type PermissionCode =

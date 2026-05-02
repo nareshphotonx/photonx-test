@@ -11,6 +11,7 @@ import {
 } from '@prisma/client';
 import { Role } from '../../common/enums/role.enum';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { RequestCodeService } from '../../common/services/request-code.service';
 import { AuditService } from '../audit/audit.service';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { CreateLeavePolicyDto } from './dto/create-leave-policy.dto';
@@ -26,6 +27,7 @@ export class LeaveService {
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     private readonly approvalsService: ApprovalsService,
+    private readonly requestCodeService: RequestCodeService,
   ) {}
 
   async createLeaveType(tenantId: string, actor: Express.User, dto: CreateLeaveTypeDto) {
@@ -330,9 +332,12 @@ export class LeaveService {
       dto.endDate,
     );
 
+    const requestCode = await this.requestCodeService.next(tenantId, 'leave');
+
     const leaveRequest = await this.prisma.leaveRequest.create({
       data: {
         tenantId,
+        requestCode,
         userId: actor.sub,
         leaveTypeId: dto.leaveTypeId,
         startDate: dto.startDate,

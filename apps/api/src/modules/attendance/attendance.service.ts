@@ -12,6 +12,7 @@ import {
 } from '@prisma/client';
 import { Role } from '../../common/enums/role.enum';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { RequestCodeService } from '../../common/services/request-code.service';
 import { AuditService } from '../audit/audit.service';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { AttendanceReportDto } from './dto/attendance-report.dto';
@@ -33,6 +34,7 @@ export class AttendanceService {
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     private readonly approvalsService: ApprovalsService,
+    private readonly requestCodeService: RequestCodeService,
   ) {}
 
   async checkIn(
@@ -337,9 +339,15 @@ export class AttendanceService {
       throw new BadRequestException('Corrected check-out must be after corrected check-in');
     }
 
+    const requestCode = await this.requestCodeService.next(
+      tenantId,
+      'attendance_regularization',
+    );
+
     const regularization = await this.prisma.attendanceRegularizationRequest.create({
       data: {
         tenantId,
+        requestCode,
         userId: actor.sub,
         attendanceDayId: attendanceDay.id,
         correctedCheckInAt: dto.correctedCheckInAt,
