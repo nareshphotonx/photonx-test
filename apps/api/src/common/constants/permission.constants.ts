@@ -70,6 +70,52 @@ export const PERMISSIONS = {
   ATTACHMENTS_PRESIGNED_URL: 'attachments:presigned_url:create',
   ATTACHMENTS_CONFIRM_UPLOAD: 'attachments:confirm_upload',
   ATTACHMENTS_READ: 'attachments:read',
+
+  ATTENDANCE_CHECK_IN: 'attendance:check_in',
+  ATTENDANCE_CHECK_OUT: 'attendance:check_out',
+  ATTENDANCE_TODAY_READ: 'attendance:today:read',
+  ATTENDANCE_REPORT_READ: 'attendance:report:read',
+  ATTENDANCE_REGULARIZATION_CREATE: 'attendance_regularization:create',
+  ATTENDANCE_REGULARIZATION_READ: 'attendance_regularization:read',
+  ATTENDANCE_REGULARIZATION_APPROVE: 'attendance_regularization:approve',
+  ATTENDANCE_REGULARIZATION_REJECT: 'attendance_regularization:reject',
+
+  LEAVE_TYPES_CREATE: 'leave_types:create',
+  LEAVE_TYPES_READ: 'leave_types:read',
+  LEAVE_POLICIES_CREATE: 'leave_policies:create',
+  LEAVE_BALANCE_ME_READ: 'leave_balance:me:read',
+  LEAVE_BALANCE_USER_READ: 'leave_balance:user:read',
+  LEAVE_REQUESTS_CREATE: 'leave_requests:create',
+  LEAVE_REQUESTS_READ: 'leave_requests:read',
+  LEAVE_REQUESTS_APPROVE: 'leave_requests:approve',
+  LEAVE_REQUESTS_REJECT: 'leave_requests:reject',
+
+  WFH_POLICIES_CREATE: 'wfh_policies:create',
+  WFH_BALANCE_ME_READ: 'wfh_balance:me:read',
+  WFH_BALANCE_USER_READ: 'wfh_balance:user:read',
+  WFH_REQUESTS_CREATE: 'wfh_requests:create',
+  WFH_REQUESTS_READ: 'wfh_requests:read',
+  WFH_REQUESTS_APPROVE: 'wfh_requests:approve',
+  WFH_REQUESTS_REJECT: 'wfh_requests:reject',
+
+  HOLIDAYS_CREATE: 'holidays:create',
+  HOLIDAYS_READ: 'holidays:read',
+  HOLIDAYS_UPDATE: 'holidays:update',
+  HOLIDAYS_DELETE: 'holidays:delete',
+  HOLIDAYS_CLAIM_OPTIONAL: 'holidays:claim_optional',
+
+  EXPENSE_CATEGORIES_CREATE: 'expense_categories:create',
+  EXPENSE_CATEGORIES_READ: 'expense_categories:read',
+  EXPENSE_POLICIES_CREATE: 'expense_policies:create',
+  EXPENSES_CREATE: 'expenses:create',
+  EXPENSES_READ: 'expenses:read',
+  EXPENSES_APPROVE: 'expenses:approve',
+  EXPENSES_REJECT: 'expenses:reject',
+
+  APPROVALS_PENDING_READ: 'approvals:pending:read',
+  APPROVALS_HISTORY_READ: 'approvals:history:read',
+  APPROVALS_APPROVE: 'approvals:approve',
+  APPROVALS_REJECT: 'approvals:reject',
 } as const;
 
 export type PermissionCode =

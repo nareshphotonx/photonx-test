@@ -17,8 +17,13 @@ import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { HealthModule } from './modules/health/health.module';
 import { AttachmentsModule } from './modules/attachments/attachments.module';
+import { ApprovalsModule } from './modules/approvals/approvals.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
 import { NotificationPreferencesModule } from './modules/notification-preferences/notification-preferences.module';
 import { OfficePolicyModule } from './modules/office-policy/office-policy.module';
+import { HolidaysModule } from './modules/holidays/holidays.module';
+import { LeaveModule } from './modules/leave/leave.module';
 import { MilestonesModule } from './modules/milestones/milestones.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { RecurringTaskTemplatesModule } from './modules/recurring-task-templates/recurring-task-templates.module';
@@ -33,6 +38,7 @@ import { TenantModule } from './modules/tenant/tenant.module';
 import { TeamsModule } from './modules/teams/teams.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { UsersModule } from './modules/users/users.module';
+import { WfhModule } from './modules/wfh/wfh.module';
 
 @Module({
   imports: [
@@ -50,6 +56,12 @@ import { UsersModule } from './modules/users/users.module';
     UsersModule,
     TeamsModule,
     RolesModule,
+    ApprovalsModule,
+    AttendanceModule,
+    LeaveModule,
+    WfhModule,
+    HolidaysModule,
+    ExpensesModule,
     OfficePolicyModule,
     NotificationPreferencesModule,
     ProjectsModule,

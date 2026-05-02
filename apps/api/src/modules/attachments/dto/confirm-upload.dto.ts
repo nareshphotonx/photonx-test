@@ -1,11 +1,36 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsPositive, IsString, Max, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { AttachmentEntityType } from '@prisma/client';
+import {
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsPositive,
+  IsString,
+  Max,
+  MaxLength,
+} from 'class-validator';
 
 export class ConfirmUploadDto {
-  @ApiProperty({ example: 'cuid_task_1' })
+  @ApiPropertyOptional({ enum: AttachmentEntityType, default: AttachmentEntityType.TASK })
+  @IsOptional()
+  @IsEnum(AttachmentEntityType)
+  entityType?: AttachmentEntityType;
+
+  @ApiPropertyOptional({ example: 'cuid_task_1' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  taskId!: string;
+  entityId?: string;
+
+  @ApiPropertyOptional({ example: 'cuid_task_1' })
+  @IsOptional()
+  @IsString()
+  taskId?: string;
+
+  @ApiPropertyOptional({ example: 'cuid_project_1' })
+  @IsOptional()
+  @IsString()
+  projectId?: string;
 
   @ApiProperty({ example: 'tenantId/taskId/1714639300-evidence-selfie.jpg' })
   @IsString()

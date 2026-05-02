@@ -156,12 +156,28 @@ async function seed(): Promise<void> {
       extras: {
         attendanceWindowStart: '09:00',
         attendanceWindowEnd: '10:30',
+        officeStartTime: '09:30',
+        officeEndTime: '18:30',
+        officeGeoFenceMeters: 150,
+        optionalHolidayAnnualQuota: 2,
+        timeEntryDailyCapHours: 12,
+        timeEntryLockDays: 7,
       },
     },
     update: {
       timezone: 'Asia/Kolkata',
       currency: 'INR',
       workWeekStart: WorkWeekStart.MONDAY,
+      extras: {
+        attendanceWindowStart: '09:00',
+        attendanceWindowEnd: '10:30',
+        officeStartTime: '09:30',
+        officeEndTime: '18:30',
+        officeGeoFenceMeters: 150,
+        optionalHolidayAnnualQuota: 2,
+        timeEntryDailyCapHours: 12,
+        timeEntryLockDays: 7,
+      },
     },
   });
 
@@ -888,6 +904,242 @@ async function seed(): Promise<void> {
         note: 'Seed monthly infra cost',
         costDate: new Date('2026-05-02T00:00:00.000Z'),
         createdBy: superAdmin.id,
+      },
+    });
+  }
+
+  const leaveTypes = await Promise.all([
+    prisma.leaveType.upsert({
+      where: {
+        tenantId_code: {
+          tenantId: tenant.id,
+          code: 'CASUAL',
+        },
+      },
+      create: {
+        tenantId: tenant.id,
+        code: 'CASUAL',
+        name: 'Casual Leave',
+        description: 'General personal leave',
+        isActive: true,
+      },
+      update: {
+        name: 'Casual Leave',
+        description: 'General personal leave',
+        isActive: true,
+      },
+    }),
+    prisma.leaveType.upsert({
+      where: {
+        tenantId_code: {
+          tenantId: tenant.id,
+          code: 'SICK',
+        },
+      },
+      create: {
+        tenantId: tenant.id,
+        code: 'SICK',
+        name: 'Sick Leave',
+        description: 'Health related leave',
+        isActive: true,
+      },
+      update: {
+        name: 'Sick Leave',
+        description: 'Health related leave',
+        isActive: true,
+      },
+    }),
+  ]);
+
+  for (const leaveType of leaveTypes) {
+    await prisma.leavePolicy.upsert({
+      where: {
+        tenantId_leaveTypeId: {
+          tenantId: tenant.id,
+          leaveTypeId: leaveType.id,
+        },
+      },
+      create: {
+        tenantId: tenant.id,
+        leaveTypeId: leaveType.id,
+        defaultAnnualQuota: new Prisma.Decimal(18),
+        monthlyAccrual: new Prisma.Decimal(1.5),
+        joiningProration: true,
+      },
+      update: {
+        defaultAnnualQuota: new Prisma.Decimal(18),
+        monthlyAccrual: new Prisma.Decimal(1.5),
+        joiningProration: true,
+      },
+    });
+  }
+
+  await prisma.leaveUserQuotaOverride.upsert({
+    where: {
+      tenantId_userId_leaveTypeId: {
+        tenantId: tenant.id,
+        userId: teamLead.id,
+        leaveTypeId: leaveTypes[0].id,
+      },
+    },
+    create: {
+      tenantId: tenant.id,
+      userId: teamLead.id,
+      leaveTypeId: leaveTypes[0].id,
+      annualQuota: new Prisma.Decimal(24),
+      monthlyAccrual: new Prisma.Decimal(2),
+    },
+    update: {
+      annualQuota: new Prisma.Decimal(24),
+      monthlyAccrual: new Prisma.Decimal(2),
+    },
+  });
+
+  await prisma.wfhPolicy.upsert({
+    where: { tenantId: tenant.id },
+    create: {
+      tenantId: tenant.id,
+      defaultAnnualQuota: new Prisma.Decimal(36),
+    },
+    update: {
+      defaultAnnualQuota: new Prisma.Decimal(36),
+    },
+  });
+
+  await prisma.wfhUserQuotaOverride.upsert({
+    where: {
+      tenantId_userId: {
+        tenantId: tenant.id,
+        userId: teamLead.id,
+      },
+    },
+    create: {
+      tenantId: tenant.id,
+      userId: teamLead.id,
+      annualQuota: new Prisma.Decimal(48),
+    },
+    update: {
+      annualQuota: new Prisma.Decimal(48),
+    },
+  });
+
+  const [optionalHolidayDate, fixedHolidayDate] = [
+    new Date('2026-08-15T00:00:00.000Z'),
+    new Date('2026-01-26T00:00:00.000Z'),
+  ];
+
+  const optionalHolidayExisting = await prisma.holiday.findFirst({
+    where: {
+      tenantId: tenant.id,
+      locationId: null,
+      date: optionalHolidayDate,
+      name: 'Founders Optional Day',
+    },
+    select: { id: true },
+  });
+
+  const optionalHoliday =
+    optionalHolidayExisting ??
+    (await prisma.holiday.create({
+      data: {
+        tenantId: tenant.id,
+        locationId: null,
+        name: 'Founders Optional Day',
+        date: optionalHolidayDate,
+        isOptional: true,
+        isActive: true,
+      },
+      select: { id: true },
+    }));
+
+  const fixedHolidayExisting = await prisma.holiday.findFirst({
+    where: {
+      tenantId: tenant.id,
+      locationId: null,
+      date: fixedHolidayDate,
+      name: 'Republic Day',
+    },
+    select: { id: true },
+  });
+
+  if (!fixedHolidayExisting) {
+    await prisma.holiday.create({
+      data: {
+        tenantId: tenant.id,
+        locationId: null,
+        name: 'Republic Day',
+        date: fixedHolidayDate,
+        isOptional: false,
+        isActive: true,
+      },
+    });
+  }
+
+  await prisma.optionalHolidayClaim.upsert({
+    where: {
+      tenantId_userId_holidayId: {
+        tenantId: tenant.id,
+        userId: normalUser.id,
+        holidayId: optionalHoliday.id,
+      },
+    },
+    create: {
+      tenantId: tenant.id,
+      userId: normalUser.id,
+      holidayId: optionalHoliday.id,
+    },
+    update: {},
+  });
+
+  await prisma.expenseCategory.createMany({
+    data: [
+      {
+        tenantId: tenant.id,
+        code: 'TRAVEL',
+        name: 'Travel',
+        description: 'Travel and commute expenses',
+        capAmount: new Prisma.Decimal(5000),
+        isActive: true,
+      },
+      {
+        tenantId: tenant.id,
+        code: 'MEAL',
+        name: 'Meals',
+        description: 'Business meal expenses',
+        capAmount: new Prisma.Decimal(2500),
+        isActive: true,
+      },
+    ],
+    skipDuplicates: true,
+  });
+
+  const travelCategory = await prisma.expenseCategory.findUnique({
+    where: {
+      tenantId_code: {
+        tenantId: tenant.id,
+        code: 'TRAVEL',
+      },
+    },
+    select: { id: true },
+  });
+
+  if (travelCategory) {
+    await prisma.expensePolicy.upsert({
+      where: {
+        tenantId_categoryId: {
+          tenantId: tenant.id,
+          categoryId: travelCategory.id,
+        },
+      },
+      create: {
+        tenantId: tenant.id,
+        categoryId: travelCategory.id,
+        categoryCap: new Prisma.Decimal(4500),
+        requireApproval: true,
+      },
+      update: {
+        categoryCap: new Prisma.Decimal(4500),
+        requireApproval: true,
       },
     });
   }
