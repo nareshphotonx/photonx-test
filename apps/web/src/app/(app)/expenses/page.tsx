@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Plus, Receipt } from 'lucide-react';
+import { Paperclip, Plus, Receipt, X } from 'lucide-react';
 import {
   Badge,
   Button,
@@ -32,9 +32,9 @@ import {
   THead,
   TR,
   Table,
-  Textarea,
 } from '@/components/ui';
 import { get, getApiErrorMessage, post } from '@/lib/api';
+import { uploadAttachment } from '@/lib/upload';
 
 type Expense = { id: string; description?: string; amount?: number; currency?: string; status?: string; category?: { name?: string }; project?: { name?: string }; expenseDate?: string; submittedAt?: string };
 type Category = { id: string; name: string };
@@ -44,7 +44,7 @@ const schema = z.object({
   projectId: z.string().min(1, 'Project required'),
   categoryId: z.string().min(1, 'Category required'),
   amount: z.string().min(1, 'Amount required'),
-  currency: z.string().min(1).default('INR'),
+  currency: z.string().min(1),
   expenseDate: z.string().min(1, 'Date required'),
   description: z.string().min(3, 'Briefly describe the expense'),
 });
@@ -121,17 +121,32 @@ function NewExpenseDialog({ open, onOpenChange, categories, projects, onCreated 
     resolver: zodResolver(schema),
     defaultValues: { currency: 'INR' },
   });
+  const [receipt, setReceipt] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const create = useMutation({
-    mutationFn: (v: FormValues) => post('/expenses', {
-      projectId: v.projectId,
-      categoryId: v.categoryId,
-      amount: Number(v.amount),
-      currency: v.currency,
-      expenseDate: new Date(v.expenseDate).toISOString(),
-      description: v.description,
-    }),
-    onSuccess: () => { toast.success('Expense submitted for approval'); reset(); onCreated(); },
+    mutationFn: async (v: FormValues) => {
+      let receiptAttachmentId: string | undefined;
+      if (receipt) {
+        setUploading(true);
+        try {
+          const att = await uploadAttachment(receipt, { entityType: 'EXPENSE', projectId: v.projectId });
+          receiptAttachmentId = att.id;
+        } finally {
+          setUploading(false);
+        }
+      }
+      return post('/expenses', {
+        projectId: v.projectId,
+        categoryId: v.categoryId,
+        amount: Number(v.amount),
+        currency: v.currency,
+        expenseDate: new Date(v.expenseDate).toISOString(),
+        description: v.description,
+        receiptAttachmentId,
+      });
+    },
+    onSuccess: () => { toast.success('Expense submitted for approval'); reset(); setReceipt(null); onCreated(); },
     onError: (e) => toast.error(getApiErrorMessage(e)),
   });
 
@@ -185,11 +200,46 @@ function NewExpenseDialog({ open, onOpenChange, categories, projects, onCreated 
                 <FieldError>{errors.expenseDate?.message}</FieldError>
               </div>
             </div>
+
+            <div>
+              <Label>Receipt (optional)</Label>
+              {receipt ? (
+                <div className="flex items-center gap-2 p-2 border border-[color:var(--color-border)] rounded-md bg-[color:var(--color-surface-2)]">
+                  <Paperclip className="h-3.5 w-3.5 text-[color:var(--color-fg-muted)] flex-shrink-0" />
+                  <span className="text-xs flex-1 truncate">{receipt.name}</span>
+                  <span className="text-[10px] text-[color:var(--color-fg-muted)]">{(receipt.size / 1024).toFixed(0)} KB</span>
+                  <button
+                    type="button"
+                    onClick={() => setReceipt(null)}
+                    className="h-6 w-6 inline-flex items-center justify-center rounded text-[color:var(--color-fg-muted)] hover:bg-[color:var(--color-surface)]"
+                    aria-label="Remove receipt"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex items-center justify-center gap-2 h-9 px-3 border border-dashed border-[color:var(--color-border-strong)] rounded-md text-sm text-[color:var(--color-fg-muted)] hover:bg-[color:var(--color-surface-2)] cursor-pointer">
+                  <Paperclip className="h-3.5 w-3.5" /> Attach receipt (image or PDF)
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      if (f.size > 10 * 1024 * 1024) { toast.error('File must be under 10 MB'); return; }
+                      setReceipt(f);
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+
             <p className="text-xs text-[color:var(--color-fg-muted)]">💡 Tip: you can also send <span className="font-mono bg-[color:var(--color-surface-2)] px-1 rounded">expense 450 travel client visit</span> on WhatsApp.</p>
           </DialogBody>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" loading={create.isPending}>Submit expense</Button>
+            <Button type="submit" loading={create.isPending || uploading}>{uploading ? 'Uploading…' : 'Submit expense'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

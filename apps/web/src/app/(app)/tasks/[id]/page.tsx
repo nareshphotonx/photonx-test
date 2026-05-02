@@ -22,8 +22,6 @@ import {
   Textarea,
 } from '@/components/ui';
 import { del, get, getApiErrorMessage, patch, post } from '@/lib/api';
-import { cn } from '@/lib/cn';
-import { getIssueType, issueTypeFromTags, tagsFromIssueType, userTags } from '@/lib/issue-types';
 
 type Task = {
   id: string;
@@ -37,19 +35,12 @@ type Task = {
   assignee?: { id: string; name?: string; email?: string } | null;
   assigneeId?: string | null;
   projectId: string;
-  parentTaskId?: string | null;
-  parentTask?: { id: string; key: string; title: string } | null;
   estimateHours?: number | string | null;
-  tags?: unknown;
   createdAt?: string;
   updatedAt?: string;
 };
 
-type SubTask = { id: string; key: string; title: string; status?: { name: string }; assignee?: { id: string; name?: string; email?: string } };
-type Dependency = { id: string; type?: string; dependsOnTaskId?: string; requiredById?: string; dependsOnTask?: SubTask; requiredByTask?: SubTask };
-type AnyTask = { id: string; key: string; title: string };
-
-type Comment = { id: string; body: string; createdAt: string; author?: { name?: string; email?: string } };
+type Comment = { id: string; content: string; createdAt: string; author?: { name?: string; email?: string } };
 type StatusOpt = { id: string; name: string; isDone?: boolean; requiresLocation?: boolean };
 type UserOpt = { id: string; name?: string; fullName?: string; email?: string };
 
@@ -135,7 +126,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   });
 
   const addComment = useMutation({
-    mutationFn: (body: string) => post(`/tasks/${id}/comments`, { body }),
+    mutationFn: (content: string) => post(`/tasks/${id}/comments`, { content }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['task', id, 'comments'] });
       toast.success('Comment added');
@@ -164,42 +155,18 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   const t = task.data;
-  const issueType = getIssueType(issueTypeFromTags(t.tags));
-  const TypeIcon = issueType.icon;
-  const userTagList = userTags(t.tags);
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-6">
-      <div className="flex items-center justify-between gap-3 mb-4 text-sm text-[color:var(--color-fg-muted)]">
-        <Link href="/tasks" className="inline-flex items-center gap-1.5 hover:text-[color:var(--color-fg)]">
-          <ArrowLeft className="h-4 w-4" /> Back to tasks
-        </Link>
-        {t.parentTask && (
-          <Link href={`/tasks/${t.parentTask.id}`} className="inline-flex items-center gap-1.5 hover:text-[color:var(--color-fg)]">
-            <GitBranch className="h-3.5 w-3.5" />
-            Parent: <span className="font-mono text-xs">{t.parentTask.key}</span> · {t.parentTask.title}
-          </Link>
-        )}
-      </div>
+      <Link href="/tasks" className="inline-flex items-center gap-1.5 text-sm text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg)] mb-4">
+        <ArrowLeft className="h-4 w-4" /> Back to tasks
+      </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main column */}
         <div className="lg:col-span-2 space-y-4">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span
-                className="inline-flex items-center gap-1.5 h-6 px-2 rounded text-[11px] font-medium"
-                style={{ background: issueType.bg, color: issueType.color }}
-              >
-                <TypeIcon className="h-3 w-3" /> {issueType.label}
-              </span>
-              <span className="font-mono text-xs text-[color:var(--color-fg-muted)]">{t.key}</span>
-              {userTagList.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {userTagList.map((tag) => (<Badge key={tag} tone="neutral" size="sm">{tag}</Badge>))}
-                </div>
-              )}
-            </div>
+            <p className="font-mono text-xs text-[color:var(--color-fg-muted)] mb-1">{t.key}</p>
             {editing ? (
               <Input
                 value={draftTitle}
@@ -210,9 +177,6 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
               <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
             )}
           </div>
-
-          <SubtasksPanel taskId={t.id} projectId={t.projectId} />
-          <LinkedIssuesPanel taskId={t.id} projectId={t.projectId} />
 
           {editing ? (
             <Card>
@@ -284,6 +248,9 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
             </Card>
           )}
 
+          <SubtasksPanel taskId={t.id} projectId={t.projectId} />
+          <DependenciesPanel taskId={t.id} projectId={t.projectId} />
+
           {/* Comments */}
           <Card>
             <CardHeader>
@@ -311,7 +278,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                           <p className="text-sm font-medium">{c.author?.name ?? c.author?.email ?? 'Unknown'}</p>
                           <span className="text-[11px] text-[color:var(--color-fg-muted)]">{new Date(c.createdAt).toLocaleString()}</span>
                         </div>
-                        <p className="text-sm whitespace-pre-wrap">{c.body}</p>
+                        <p className="text-sm whitespace-pre-wrap">{c.content}</p>
                       </div>
                     </li>
                   ))}
@@ -448,25 +415,23 @@ function CommentForm({ onAdd, pending }: { onAdd: (body: string) => void; pendin
   );
 }
 
+type SubTask = { id: string; key: string; title: string; status?: { name: string }; assignee?: { id: string; name?: string; email?: string } };
+type Dep = { id: string; type?: string; dependsOnTask?: SubTask; requiredByTask?: SubTask };
+type SimpleTask = { id: string; key: string; title: string };
+
 function SubtasksPanel({ taskId, projectId }: { taskId: string; projectId: string }) {
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
 
-  // Fetch subtasks via /tasks?parentTaskId=...
-  const subtasks = useQuery({
+  const list = useQuery({
     queryKey: ['task', taskId, 'subtasks'],
     queryFn: async () => {
-      try {
-        const res = await get<{ items: SubTask[] } | SubTask[]>('/tasks', { parentTaskId: taskId, limit: 100 });
-        return Array.isArray(res) ? res : res.items ?? [];
-      } catch {
-        return [];
-      }
+      const res = await get<{ items: SubTask[] } | SubTask[]>('/tasks', { parentTaskId: taskId, limit: 100 });
+      return Array.isArray(res) ? res : res.items ?? [];
     },
   });
 
-  // Need a default status for the project to create the subtask in.
   const statuses = useQuery({
     queryKey: ['task-statuses', projectId],
     queryFn: () => get<{ items?: { id: string; isDefault?: boolean }[] } | { id: string; isDefault?: boolean }[]>('/task-statuses', { projectId }),
@@ -478,13 +443,12 @@ function SubtasksPanel({ taskId, projectId }: { taskId: string; projectId: strin
       const sList = Array.isArray(statuses.data) ? statuses.data : statuses.data?.items ?? [];
       const def = sList.find((s) => s.isDefault) ?? sList[0];
       if (!def) throw new Error('No status configured for this project');
-      return post<SubTask>('/tasks', {
+      return post('/tasks', {
         projectId,
         parentTaskId: taskId,
         statusId: def.id,
         title: title.trim(),
         priority: 'MEDIUM',
-        tags: tagsFromIssueType('SUBTASK'),
       });
     },
     onSuccess: () => {
@@ -496,7 +460,7 @@ function SubtasksPanel({ taskId, projectId }: { taskId: string; projectId: strin
     onError: (e) => toast.error(getApiErrorMessage(e)),
   });
 
-  const items = subtasks.data ?? [];
+  const items = list.data ?? [];
   const done = items.filter((s) => s.status?.name?.toLowerCase().includes('done')).length;
 
   return (
@@ -506,9 +470,7 @@ function SubtasksPanel({ taskId, projectId }: { taskId: string; projectId: strin
           <CardTitle>
             Sub-tasks
             {items.length > 0 && (
-              <span className="ml-2 text-xs font-normal text-[color:var(--color-fg-muted)]">
-                {done}/{items.length} done
-              </span>
+              <span className="ml-2 text-xs font-normal text-[color:var(--color-fg-muted)]">{done}/{items.length} done</span>
             )}
           </CardTitle>
           <Button size="sm" variant={adding ? 'ghost' : 'secondary'} onClick={() => { setAdding((v) => !v); setTitle(''); }}>
@@ -517,18 +479,13 @@ function SubtasksPanel({ taskId, projectId }: { taskId: string; projectId: strin
         </div>
       </CardHeader>
       <CardBody className="p-0">
-        {/* Progress bar */}
         {items.length > 0 && (
           <div className="px-5 pt-3">
             <div className="h-1.5 w-full bg-[color:var(--color-surface-2)] rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[color:var(--color-success)] transition-all"
-                style={{ width: `${(done / items.length) * 100}%` }}
-              />
+              <div className="h-full bg-[color:var(--color-success)] transition-all" style={{ width: `${(done / items.length) * 100}%` }} />
             </div>
           </div>
         )}
-
         {adding && (
           <div className="px-5 py-3 border-b border-[color:var(--color-border)] flex items-center gap-2">
             <Input
@@ -539,7 +496,7 @@ function SubtasksPanel({ taskId, projectId }: { taskId: string; projectId: strin
                 if (e.key === 'Enter') { e.preventDefault(); if (title.trim()) create.mutate(); }
                 if (e.key === 'Escape') { setAdding(false); setTitle(''); }
               }}
-              placeholder="Sub-task title… (Enter to add, Esc to cancel)"
+              placeholder="Sub-task title…  (Enter to add, Esc to cancel)"
               className="flex-1"
             />
             <Button size="sm" onClick={() => title.trim() && create.mutate()} loading={create.isPending} disabled={!title.trim()}>
@@ -547,10 +504,9 @@ function SubtasksPanel({ taskId, projectId }: { taskId: string; projectId: strin
             </Button>
           </div>
         )}
-
-        {subtasks.isLoading ? (
+        {list.isLoading ? (
           <div className="p-5 space-y-2"><Skeleton className="h-10" /><Skeleton className="h-10" /></div>
-        ) : items.length === 0 ? (
+        ) : items.length === 0 && !adding ? (
           <div className="text-center py-6 px-4">
             <GitBranch className="h-8 w-8 mx-auto text-[color:var(--color-fg-subtle)] mb-2" />
             <p className="text-sm text-[color:var(--color-fg-muted)]">Break this task into smaller sub-tasks.</p>
@@ -562,14 +518,9 @@ function SubtasksPanel({ taskId, projectId }: { taskId: string; projectId: strin
               return (
                 <li key={s.id}>
                   <Link href={`/tasks/${s.id}`} className="flex items-center gap-3 px-5 py-2.5 hover:bg-[color:var(--color-surface-2)] transition-colors">
-                    <span
-                      className="h-4 w-4 rounded inline-flex items-center justify-center flex-shrink-0"
-                      style={{ background: getIssueType('SUBTASK').bg, color: getIssueType('SUBTASK').color }}
-                    >
-                      <GitBranch className="h-2.5 w-2.5" />
-                    </span>
+                    <GitBranch className="h-3.5 w-3.5 text-[color:var(--color-fg-muted)] flex-shrink-0" />
                     <span className="font-mono text-[10px] text-[color:var(--color-fg-muted)] flex-shrink-0">{s.key}</span>
-                    <span className={cn('flex-1 truncate text-sm', isDone && 'line-through text-[color:var(--color-fg-muted)]')}>{s.title}</span>
+                    <span className={`flex-1 truncate text-sm ${isDone ? 'line-through text-[color:var(--color-fg-muted)]' : ''}`}>{s.title}</span>
                     {s.status?.name && <Badge tone={isDone ? 'success' : 'primary'} size="sm">{s.status.name}</Badge>}
                     {s.assignee && <Avatar size="xs" name={s.assignee.name ?? s.assignee.email} />}
                   </Link>
@@ -583,46 +534,38 @@ function SubtasksPanel({ taskId, projectId }: { taskId: string; projectId: strin
   );
 }
 
-function LinkedIssuesPanel({ taskId, projectId }: { taskId: string; projectId: string }) {
+function DependenciesPanel({ taskId, projectId }: { taskId: string; projectId: string }) {
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
-  const [linkType, setLinkType] = useState<'BLOCKS' | 'BLOCKED_BY' | 'RELATES_TO'>('BLOCKS');
-  const [otherTaskId, setOtherTaskId] = useState('');
+  const [linkType, setLinkType] = useState<'BLOCKED_BY' | 'BLOCKS' | 'RELATES_TO'>('BLOCKED_BY');
+  const [otherId, setOtherId] = useState('');
 
-  // Re-fetch the task to get its dependencies (depends-on / required-by).
   const detail = useQuery({
     queryKey: ['task', taskId, 'links'],
     queryFn: async () => {
-      try {
-        const t = await get<{ dependsOn?: Dependency[]; requiredBy?: Dependency[] }>(`/tasks/${taskId}`);
-        return t;
-      } catch {
-        return { dependsOn: [], requiredBy: [] };
-      }
+      const t = await get<{ dependsOn?: Dep[]; requiredBy?: Dep[] }>(`/tasks/${taskId}`);
+      return t;
     },
   });
 
-  const projectTasks = useQuery({
+  const candidates = useQuery({
     queryKey: ['tasks', 'for-link', projectId],
-    queryFn: () => get<{ items: AnyTask[] }>('/tasks', { projectId, limit: 100 }),
+    queryFn: () => get<{ items: SimpleTask[] }>('/tasks', { projectId, limit: 100 }),
     enabled: adding,
   });
 
   const link = useMutation({
     mutationFn: () => post(`/tasks/${taskId}/dependencies`, {
-      // BLOCKS = "this task blocks otherTask"
-      // BLOCKED_BY = "this task is blocked by otherTask"
-      // RELATES_TO = generic relation
       ...(linkType === 'BLOCKED_BY'
-        ? { dependsOnTaskId: otherTaskId, type: 'FINISH_TO_START' }
+        ? { dependsOnTaskId: otherId, type: 'FINISH_TO_START' }
         : linkType === 'BLOCKS'
-        ? { requiredById: otherTaskId, type: 'FINISH_TO_START' }
-        : { dependsOnTaskId: otherTaskId, type: 'RELATES_TO' }),
+        ? { requiredById: otherId, type: 'FINISH_TO_START' }
+        : { dependsOnTaskId: otherId, type: 'RELATES_TO' }),
     }),
     onSuccess: () => {
       toast.success('Link added');
       setAdding(false);
-      setOtherTaskId('');
+      setOtherId('');
       qc.invalidateQueries({ queryKey: ['task', taskId, 'links'] });
       qc.invalidateQueries({ queryKey: ['task', taskId] });
     },
@@ -634,15 +577,14 @@ function LinkedIssuesPanel({ taskId, projectId }: { taskId: string; projectId: s
     onSuccess: () => {
       toast.success('Link removed');
       qc.invalidateQueries({ queryKey: ['task', taskId, 'links'] });
-      qc.invalidateQueries({ queryKey: ['task', taskId] });
     },
     onError: (e) => toast.error(getApiErrorMessage(e)),
   });
 
   const dependsOn = detail.data?.dependsOn ?? [];
   const requiredBy = detail.data?.requiredBy ?? [];
-  const totalLinks = dependsOn.length + requiredBy.length;
-  const otherTaskItems = (projectTasks.data?.items ?? []).filter((t) => t.id !== taskId);
+  const total = dependsOn.length + requiredBy.length;
+  const otherTasks = (candidates.data?.items ?? []).filter((t) => t.id !== taskId);
 
   return (
     <Card>
@@ -650,9 +592,9 @@ function LinkedIssuesPanel({ taskId, projectId }: { taskId: string; projectId: s
         <div className="flex items-center justify-between">
           <CardTitle>
             Linked issues
-            {totalLinks > 0 && <span className="ml-2 text-xs font-normal text-[color:var(--color-fg-muted)]">{totalLinks}</span>}
+            {total > 0 && <span className="ml-2 text-xs font-normal text-[color:var(--color-fg-muted)]">{total}</span>}
           </CardTitle>
-          <Button size="sm" variant={adding ? 'ghost' : 'secondary'} onClick={() => { setAdding((v) => !v); setOtherTaskId(''); }}>
+          <Button size="sm" variant={adding ? 'ghost' : 'secondary'} onClick={() => { setAdding((v) => !v); setOtherId(''); }}>
             {adding ? <><X className="h-3.5 w-3.5" /> Cancel</> : <><Link2 className="h-3.5 w-3.5" /> Add link</>}
           </Button>
         </div>
@@ -661,29 +603,28 @@ function LinkedIssuesPanel({ taskId, projectId }: { taskId: string; projectId: s
         {adding && (
           <div className="px-5 py-3 border-b border-[color:var(--color-border)] grid grid-cols-[150px_1fr_auto] gap-2">
             <Select value={linkType} onChange={(e) => setLinkType(e.target.value as typeof linkType)}>
-              <option value="BLOCKS">Blocks</option>
               <option value="BLOCKED_BY">Blocked by</option>
+              <option value="BLOCKS">Blocks</option>
               <option value="RELATES_TO">Relates to</option>
             </Select>
-            <Select value={otherTaskId} onChange={(e) => setOtherTaskId(e.target.value)}>
+            <Select value={otherId} onChange={(e) => setOtherId(e.target.value)}>
               <option value="">Select task…</option>
-              {otherTaskItems.map((t) => (<option key={t.id} value={t.id}>{t.key} · {t.title}</option>))}
+              {otherTasks.map((t) => (<option key={t.id} value={t.id}>{t.key} · {t.title}</option>))}
             </Select>
-            <Button size="sm" onClick={() => otherTaskId && link.mutate()} loading={link.isPending} disabled={!otherTaskId}>Link</Button>
+            <Button size="sm" onClick={() => otherId && link.mutate()} loading={link.isPending} disabled={!otherId}>Link</Button>
           </div>
         )}
-
         {detail.isLoading ? (
-          <div className="p-5 space-y-2"><Skeleton className="h-10" /></div>
-        ) : totalLinks === 0 ? (
+          <div className="p-5"><Skeleton className="h-10" /></div>
+        ) : total === 0 ? (
           <div className="text-center py-6 px-4">
             <Link2 className="h-8 w-8 mx-auto text-[color:var(--color-fg-subtle)] mb-2" />
             <p className="text-sm text-[color:var(--color-fg-muted)]">No linked issues yet.</p>
           </div>
         ) : (
           <div>
-            <LinkGroup label="Blocked by" deps={dependsOn} taskKey="dependsOnTask" onUnlink={(id) => unlink.mutate(id)} />
-            <LinkGroup label="Blocks" deps={requiredBy} taskKey="requiredByTask" onUnlink={(id) => unlink.mutate(id)} />
+            <DepGroup label="Blocked by" deps={dependsOn} taskKey="dependsOnTask" onUnlink={(id) => unlink.mutate(id)} />
+            <DepGroup label="Blocks" deps={requiredBy} taskKey="requiredByTask" onUnlink={(id) => unlink.mutate(id)} />
           </div>
         )}
       </CardBody>
@@ -691,7 +632,7 @@ function LinkedIssuesPanel({ taskId, projectId }: { taskId: string; projectId: s
   );
 }
 
-function LinkGroup({ label, deps, taskKey, onUnlink }: { label: string; deps: Dependency[]; taskKey: 'dependsOnTask' | 'requiredByTask'; onUnlink: (id: string) => void }) {
+function DepGroup({ label, deps, taskKey, onUnlink }: { label: string; deps: Dep[]; taskKey: 'dependsOnTask' | 'requiredByTask'; onUnlink: (id: string) => void }) {
   if (deps.length === 0) return null;
   return (
     <div className="border-b border-[color:var(--color-border)] last:border-b-0">

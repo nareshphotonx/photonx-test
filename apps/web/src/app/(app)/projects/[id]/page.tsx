@@ -197,6 +197,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       />
 
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        <BudgetAlert burn={burn} budget={p.budgetAmount} currency={p.budgetCurrency ?? '₹'} />
+
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Stat label="Tasks" value={taskCounts?.total ?? taskItems.length} icon={ListChecks} hint={`${taskCounts?.done ?? 0} done · ${taskCounts?.inProgress ?? 0} in progress`} />
@@ -440,5 +442,36 @@ function EditProjectDialog({ open, onOpenChange, project, onSaved }: { open: boo
         </form>
       </DialogContent>
     </DialogRoot>
+  );
+}
+
+function BudgetAlert({ burn, budget, currency }: { burn?: number | null; budget?: number | null; currency: string }) {
+  if (burn == null || !budget) return null;
+  const ratio = burn / Number(budget);
+  if (ratio < 0.8) return null;
+  const pct = Math.round(ratio * 100);
+  // Tier: 80-99% warning, 100-119% danger, 120%+ critical
+  const tier = ratio >= 1.2 ? 'critical' : ratio >= 1.0 ? 'over' : 'warning';
+  const styles = {
+    warning: { bg: 'bg-[color:var(--color-warning-soft)]', border: 'border-amber-200', text: 'text-[color:var(--color-warning)]', icon: '⚠️', label: 'Approaching budget' },
+    over: { bg: 'bg-[color:var(--color-danger-soft)]', border: 'border-red-200', text: 'text-[color:var(--color-danger)]', icon: '🚨', label: 'Budget exceeded' },
+    critical: { bg: 'bg-[color:var(--color-danger-soft)]', border: 'border-red-300', text: 'text-[color:var(--color-danger)]', icon: '🔥', label: 'Critical: 120%+ over budget' },
+  } as const;
+  const s = styles[tier];
+  return (
+    <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${s.bg} ${s.border}`}>
+      <span className="text-xl">{s.icon}</span>
+      <div className="flex-1">
+        <p className={`text-sm font-semibold ${s.text}`}>
+          {s.label} — {pct}% spent ({currency} {burn.toLocaleString()} of {currency} {Number(budget).toLocaleString()})
+        </p>
+        <div className="h-1.5 w-full bg-white/50 rounded-full overflow-hidden mt-2">
+          <div
+            className={`h-full transition-all ${tier === 'warning' ? 'bg-[color:var(--color-warning)]' : 'bg-[color:var(--color-danger)]'}`}
+            style={{ width: `${Math.min(ratio, 1.5) * 100 / 1.5}%` }}
+          />
+        </div>
+      </div>
+    </div>
   );
 }

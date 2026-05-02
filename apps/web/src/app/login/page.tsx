@@ -10,6 +10,7 @@ import { ArrowRight, BookOpen, BriefcaseBusiness, Eye, EyeOff, MessageSquare, Sp
 import { Button, FieldError, Input, Label } from '@/components/ui';
 import { login } from '@/lib/auth';
 import { getApiErrorMessage } from '@/lib/api';
+import { landingFor } from '@/lib/roles';
 
 const schema = z.object({
   tenantSlug: z.string().min(1, 'Workspace is required'),
@@ -36,9 +37,9 @@ export default function LoginPage() {
   const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
     try {
-      await login(values);
+      const result = await login(values);
       toast.success('Welcome back!');
-      const next = params.get('next') ?? '/dashboard';
+      const next = params.get('next') ?? landingFor(result.user);
       router.replace(next);
     } catch (e) {
       toast.error(getApiErrorMessage(e));

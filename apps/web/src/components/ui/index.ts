@@ -8,4 +8,3 @@ export * from './tabs';
 export * from './dropdown';
 export * from './table';
 export * from './error-banner';
-export * from './tags-input';

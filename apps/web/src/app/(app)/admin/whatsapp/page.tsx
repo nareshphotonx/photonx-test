@@ -1,14 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { MessageSquare, Search } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { MessageSquare, Search, Send } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Badge, Card, CardBody, CardHeader, CardTitle, EmptyState, Input, PageHeader, Skeleton,
   TabsContent, TabsList, TabsRoot, TabsTrigger,
   TBody, TD, TH, THead, TR, Table,
 } from '@/components/ui';
-import { get } from '@/lib/api';
+import { get, getApiErrorMessage, post } from '@/lib/api';
+import { storage } from '@/lib/storage';
 
 type Message = {
   id: string;
@@ -63,11 +65,13 @@ export default function WhatsAppAdminPage() {
           </CardBody>
         </Card>
 
-        <TabsRoot defaultValue="messages">
+        <TabsRoot defaultValue="test">
           <TabsList>
+            <TabsTrigger value="test">Test command</TabsTrigger>
             <TabsTrigger value="messages">Messages</TabsTrigger>
             <TabsTrigger value="sessions">Sessions</TabsTrigger>
           </TabsList>
+          <TabsContent value="test"><TestCommandTab /></TabsContent>
           <TabsContent value="messages"><MessagesTab /></TabsContent>
           <TabsContent value="sessions"><SessionsTab /></TabsContent>
         </TabsRoot>
@@ -142,6 +146,117 @@ function SessionsTab() {
               </TBody>
             </Table>
           )}
+      </CardBody>
+    </Card>
+  );
+}
+
+type CommandResponse = {
+  reply?: string;
+  message?: string;
+  text?: string;
+  intent?: string;
+  toolsUsed?: Array<{ name: string }>;
+  ok?: boolean;
+} & Record<string, unknown>;
+
+const SAMPLE_COMMANDS = ['in', 'out', 'tasks', 'start T-101', 'done T-101', 'log 2h T-101', 'apply leave tomorrow sick', 'apply wfh today internet issue', 'expense 450 travel client visit', 'my performance'];
+
+function TestCommandTab() {
+  const [phone, setPhone] = useState('+919900000003');
+  const [command, setCommand] = useState('tasks');
+
+  const send = useMutation({
+    mutationFn: () => post<CommandResponse>('/whatsapp/test-command', {
+      tenantSlug: storage.getTenantSlug() ?? 'photonx-default',
+      command,
+      userPhone: phone,
+    }),
+    onError: (e) => toast.error(getApiErrorMessage(e)),
+  });
+
+  const reply = send.data;
+  const replyText = reply ? (reply.reply ?? reply.message ?? reply.text ?? JSON.stringify(reply, null, 2)) : '';
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-4">
+          <CardTitle>Simulate a WhatsApp message</CardTitle>
+          <span className="text-xs text-[color:var(--color-fg-muted)]">Posts to <span className="font-mono">/whatsapp/test-command</span></span>
+        </div>
+      </CardHeader>
+      <CardBody className="space-y-4">
+        <div className="grid grid-cols-[180px_1fr_auto] gap-2">
+          <div>
+            <label htmlFor="phone" className="block text-xs text-[color:var(--color-fg-muted)] mb-1">Sender phone</label>
+            <input
+              id="phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+91…"
+              className="w-full h-9 px-3 text-sm rounded-md border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] font-mono focus:outline-none focus:border-[color:var(--color-primary)] focus:ring-2 focus:ring-[color:var(--color-ring)]"
+            />
+          </div>
+          <div>
+            <label htmlFor="cmd" className="block text-xs text-[color:var(--color-fg-muted)] mb-1">Command</label>
+            <input
+              id="cmd"
+              value={command}
+              onChange={(e) => setCommand(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); send.mutate(); } }}
+              placeholder="tasks"
+              className="w-full h-9 px-3 text-sm rounded-md border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] font-mono focus:outline-none focus:border-[color:var(--color-primary)] focus:ring-2 focus:ring-[color:var(--color-ring)]"
+            />
+          </div>
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={() => send.mutate()}
+              disabled={send.isPending || !command.trim()}
+              className="h-9 px-3.5 inline-flex items-center gap-2 rounded-md bg-[color:var(--color-primary)] text-white text-sm font-medium hover:bg-[color:var(--color-primary-hover)] disabled:opacity-50"
+            >
+              <Send className="h-3.5 w-3.5" /> Send
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <p className="text-[11px] uppercase tracking-wider text-[color:var(--color-fg-muted)] font-semibold mb-1.5">Quick samples</p>
+          <div className="flex flex-wrap gap-1.5">
+            {SAMPLE_COMMANDS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setCommand(s)}
+                className="text-[11px] font-mono px-2 h-7 inline-flex items-center rounded-md border border-[color:var(--color-border)] hover:border-[color:var(--color-border-strong)] hover:bg-[color:var(--color-surface-2)]"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {send.isError && (
+          <div className="p-3 bg-[color:var(--color-danger-soft)] border border-red-200 text-[color:var(--color-danger)] rounded-lg text-sm">
+            <p className="font-medium">Command failed</p>
+            <p className="opacity-80 mt-0.5">{getApiErrorMessage(send.error)}</p>
+            <p className="text-xs opacity-60 mt-2">Tip: make sure <span className="font-mono">WHATSAPP_TEST_SECRET</span> is set in the API .env.</p>
+          </div>
+        )}
+
+        {reply && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Badge tone="success">Bot reply</Badge>
+              {reply.intent && <Badge tone="info" size="sm">intent: {reply.intent}</Badge>}
+              {reply.toolsUsed?.map((t, i) => (<Badge key={i} tone="primary" size="sm">tool: {t.name}</Badge>))}
+            </div>
+            <div className="p-4 bg-[color:var(--color-surface-2)] rounded-lg">
+              <pre className="text-sm whitespace-pre-wrap font-sans">{replyText}</pre>
+            </div>
+          </div>
+        )}
       </CardBody>
     </Card>
   );

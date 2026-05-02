@@ -12,6 +12,8 @@ import {
   Button,
   Card,
   CardBody,
+  CardHeader,
+  CardTitle,
   DialogBody,
   DialogContent,
   DialogFooter,
@@ -79,9 +81,10 @@ export default function DocumentsPage() {
       />
 
       <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="relative max-w-sm mb-4">
+        <RagSearchInspector />
+        <div className="relative max-w-sm mb-4 mt-6">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[color:var(--color-fg-subtle)]" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search documents…" className="pl-8" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter document titles…" className="pl-8" />
         </div>
 
         {isLoading ? (
@@ -225,5 +228,71 @@ function NewDocDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpen
         </form>
       </DialogContent>
     </DialogRoot>
+  );
+}
+
+type Hit = { documentId?: string; chunkId?: string; title?: string; snippet?: string; content?: string; score?: number; documentType?: string };
+
+function RagSearchInspector() {
+  const [query, setQuery] = useState('');
+  const [submitted, setSubmitted] = useState('');
+  const [topK, setTopK] = useState('5');
+
+  const search = useMutation({
+    mutationFn: (q: string) => post<{ items?: Hit[] } | Hit[]>('/documents/search', {
+      query: q,
+      topK: Number(topK) || 5,
+    }),
+    onError: (e) => toast.error(getApiErrorMessage(e)),
+  });
+
+  const hits: Hit[] = (() => {
+    const d = search.data;
+    if (!d) return [];
+    return Array.isArray(d) ? d : d.items ?? [];
+  })();
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>RAG search inspector</CardTitle>
+          <span className="text-xs text-[color:var(--color-fg-muted)]">See exactly which chunks the AI would cite for a question</span>
+        </div>
+      </CardHeader>
+      <CardBody className="space-y-3">
+        <form
+          onSubmit={(e) => { e.preventDefault(); if (query.trim()) { setSubmitted(query.trim()); search.mutate(query.trim()); } }}
+          className="flex gap-2"
+        >
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="e.g. How many optional holidays can I claim?" className="flex-1" />
+          <div className="w-20">
+            <Input type="number" min="1" max="10" value={topK} onChange={(e) => setTopK(e.target.value)} title="Top K hits" />
+          </div>
+          <Button type="submit" loading={search.isPending} disabled={!query.trim()}>Search</Button>
+        </form>
+
+        {submitted && !search.isPending && (
+          hits.length === 0 ? (
+            <p className="text-xs text-[color:var(--color-fg-muted)] italic">No hits for &ldquo;{submitted}&rdquo;.</p>
+          ) : (
+            <ul className="space-y-2">
+              {hits.map((h, i) => (
+                <li key={h.chunkId ?? i} className="border border-[color:var(--color-border)] rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <p className="text-sm font-medium truncate">{h.title ?? h.documentId?.slice(0, 8) ?? 'Document'}</p>
+                    <div className="flex items-center gap-1.5">
+                      {h.documentType && <Badge tone="primary" size="sm">{h.documentType}</Badge>}
+                      {h.score != null && <Badge tone="info" size="sm">score {h.score.toFixed(3)}</Badge>}
+                    </div>
+                  </div>
+                  <p className="text-xs text-[color:var(--color-fg-muted)] line-clamp-3">{h.snippet ?? h.content ?? ''}</p>
+                </li>
+              ))}
+            </ul>
+          )
+        )}
+      </CardBody>
+    </Card>
   );
 }

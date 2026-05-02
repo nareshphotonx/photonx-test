@@ -15,11 +15,10 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { toast } from 'sonner';
-import { ListChecks, Plus, X } from 'lucide-react';
-import { Avatar, Badge, Button, EmptyState, Skeleton } from '@/components/ui';
+import { ListChecks } from 'lucide-react';
+import { Avatar, Badge, EmptyState, Skeleton } from '@/components/ui';
 import { get, getApiErrorMessage, post } from '@/lib/api';
 import { cn } from '@/lib/cn';
-import { getIssueType, issueTypeFromTags, tagsFromIssueType } from '@/lib/issue-types';
 
 type KTask = {
   id: string;
@@ -28,7 +27,6 @@ type KTask = {
   priority?: string;
   dueDate?: string | null;
   taskStatusId?: string;
-  tags?: unknown;
   assignee?: { id: string; name?: string };
 };
 type KColumn = {
@@ -86,20 +84,6 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
     },
   });
 
-  const quickCreate = useMutation({
-    mutationFn: ({ title, statusId }: { title: string; statusId: string }) =>
-      post<KTask>('/tasks', { projectId, statusId, title, priority: 'MEDIUM', tags: tagsFromIssueType('TASK') }),
-    onSuccess: (task, { statusId }) => {
-      // Optimistically prepend to the destination column.
-      setColumns((prev) => prev.map((c) =>
-        c.id === statusId ? { ...c, tasks: [task as KTask, ...c.tasks] } : c,
-      ));
-      qc.invalidateQueries({ queryKey: ['tasks'] });
-      toast.success(`${task.key ?? 'Task'} created`);
-    },
-    onError: (e) => toast.error(getApiErrorMessage(e)),
-  });
-
   const handleDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
 
   const handleDragEnd = (e: DragEndEvent) => {
@@ -147,13 +131,7 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="overflow-x-auto pb-2">
         <div className="flex gap-4 min-w-max">
-          {columns.map((col) => (
-            <Column
-              key={col.id}
-              column={col}
-              onQuickCreate={(title) => quickCreate.mutate({ title, statusId: col.id })}
-            />
-          ))}
+          {columns.map((col) => (<Column key={col.id} column={col} />))}
         </div>
       </div>
       <DragOverlay dropAnimation={{ duration: 180, easing: 'cubic-bezier(.2, .8, .2, 1)' }}>
@@ -163,19 +141,8 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
   );
 }
 
-function Column({ column, onQuickCreate }: { column: KColumn; onQuickCreate: (title: string) => void }) {
+function Column({ column }: { column: KColumn }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
-  const [adding, setAdding] = useState(false);
-  const [title, setTitle] = useState('');
-
-  const submit = () => {
-    const t = title.trim();
-    if (!t) { setAdding(false); return; }
-    onQuickCreate(t);
-    setTitle('');
-    // keep `adding` open so user can add multiple in a row
-  };
-
   return (
     <div className="w-72 flex-shrink-0">
       <div className="px-1 mb-2 flex items-center justify-between gap-2">
@@ -195,49 +162,10 @@ function Column({ column, onQuickCreate }: { column: KColumn; onQuickCreate: (ti
             : 'bg-[color:var(--color-surface-2)]',
         )}
       >
-        {column.tasks.length === 0 && !adding && (
-          <div className="text-center text-xs text-[color:var(--color-fg-subtle)] py-6 italic">Drop tasks here</div>
+        {column.tasks.length === 0 && (
+          <div className="text-center text-xs text-[color:var(--color-fg-subtle)] py-8 italic">Drop tasks here</div>
         )}
         {column.tasks.map((t) => (<DraggableTaskCard key={t.id} task={t} />))}
-
-        {adding ? (
-          <div className="bg-[color:var(--color-surface)] border border-[color:var(--color-primary)] ring-2 ring-[color:var(--color-ring)] rounded-md p-2 animate-fade-in">
-            <textarea
-              autoFocus
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
-                if (e.key === 'Escape') { setAdding(false); setTitle(''); }
-              }}
-              placeholder="What needs to be done?"
-              rows={2}
-              className="w-full resize-none border-0 outline-0 bg-transparent text-sm placeholder:text-[color:var(--color-fg-subtle)]"
-            />
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-[10px] text-[color:var(--color-fg-muted)]">Enter to add · Esc to cancel</span>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => { setAdding(false); setTitle(''); }}
-                  className="h-6 w-6 inline-flex items-center justify-center rounded text-[color:var(--color-fg-muted)] hover:bg-[color:var(--color-surface-2)]"
-                  aria-label="Cancel"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-                <Button type="button" size="xs" onClick={submit} disabled={!title.trim()}>Add</Button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className="w-full text-left text-xs text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg)] hover:bg-[color:var(--color-surface)] rounded-md px-2 py-1.5 inline-flex items-center gap-1.5 transition-colors"
-          >
-            <Plus className="h-3.5 w-3.5" /> Add task
-          </button>
-        )}
       </div>
     </div>
   );
@@ -263,8 +191,6 @@ function DraggableTaskCard({ task }: { task: KTask }) {
 }
 
 function TaskCard({ task, dragging }: { task: KTask; dragging?: boolean }) {
-  const type = getIssueType(issueTypeFromTags(task.tags));
-  const Icon = type.icon;
   return (
     <div
       className={cn(
@@ -275,23 +201,14 @@ function TaskCard({ task, dragging }: { task: KTask; dragging?: boolean }) {
       )}
     >
       <div className="flex items-start justify-between gap-2 mb-1">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span
-            className="h-4 w-4 rounded inline-flex items-center justify-center flex-shrink-0"
-            style={{ background: type.bg, color: type.color }}
-            title={type.label}
-          >
-            <Icon className="h-2.5 w-2.5" />
-          </span>
-          <Link
-            href={`/tasks/${task.id}`}
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="font-mono text-[10px] text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-primary)]"
-          >
-            {task.key}
-          </Link>
-        </div>
+        <Link
+          href={`/tasks/${task.id}`}
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="font-mono text-[10px] text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-primary)]"
+        >
+          {task.key}
+        </Link>
         {task.priority && task.priority !== 'MEDIUM' && (
           <Badge tone={priorityTone(task.priority)} size="sm">{task.priority}</Badge>
         )}

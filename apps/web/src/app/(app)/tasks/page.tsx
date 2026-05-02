@@ -26,7 +26,6 @@ import {
   PageHeader,
   Select,
   Skeleton,
-  TagsInput,
   TBody,
   TD,
   TH,
@@ -38,7 +37,7 @@ import {
 import { KanbanBoard } from '@/components/kanban-board';
 import { get, getApiErrorMessage, post } from '@/lib/api';
 import { cn } from '@/lib/cn';
-import { ISSUE_TYPES, getIssueType, issueTypeFromTags, tagsFromIssueType, userTags, type IssueType } from '@/lib/issue-types';
+import { useCurrentUser, primaryRole } from '@/lib/roles';
 
 type Task = {
   id: string;
@@ -48,7 +47,6 @@ type Task = {
   dueDate?: string | null;
   status?: { name: string };
   assignee?: { id: string; name?: string; email?: string };
-  tags?: unknown;
 };
 
 type Project = { id: string; name: string; code: string };
@@ -56,11 +54,18 @@ type TaskStatus = { id: string; name: string; projectId: string; isDefault?: boo
 
 export default function TasksPage() {
   const qc = useQueryClient();
+  const { user, loaded } = useCurrentUser();
+  const role = primaryRole(user);
+  const myId = user?.id;
+
   const [search, setSearch] = useState('');
   const [view, setView] = useState<'list' | 'board'>('list');
   const [filter, setFilter] = useState<'all' | 'mine' | 'overdue'>('all');
   const [open, setOpen] = useState(false);
   const [boardProjectId, setBoardProjectId] = useState<string>('');
+
+  // Default to "Mine" for regular employees so they don't see the whole org's backlog.
+  useEffect(() => { if (loaded && role === 'USER') setFilter('mine'); }, [loaded, role]);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['tasks', 'list'],
@@ -70,22 +75,15 @@ export default function TasksPage() {
   const projectItems = projects.data?.items ?? [];
   const activeBoardProjectId = boardProjectId || projectItems[0]?.id || '';
 
-  // Press "C" anywhere (when not typing in a field) to open Create Task.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() !== 'c' || e.metaKey || e.ctrlKey || e.altKey) return;
-      const target = e.target as HTMLElement | null;
-      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
-      if (target?.isContentEditable) return;
-      e.preventDefault();
-      setOpen(true);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
   const items = (data?.items ?? []).filter((t) => {
     if (search && !`${t.key} ${t.title}`.toLowerCase().includes(search.toLowerCase())) return false;
+    if (filter === 'mine') {
+      if (!myId) return false;
+      const a = t.assignee as { id?: string } | undefined;
+      // backend may include assignee object or just assigneeId
+      const aId = a?.id ?? (t as unknown as { assigneeId?: string }).assigneeId;
+      return aId === myId;
+    }
     if (filter === 'overdue') {
       if (!t.dueDate) return false;
       return new Date(t.dueDate).getTime() < Date.now();
@@ -229,29 +227,16 @@ const taskSchema = z.object({
 type TaskForm = z.infer<typeof taskSchema>;
 type CreatedTask = Task & { projectId: string };
 
-type AssigneeOpt = { id: string; name?: string; fullName?: string; email?: string };
-type TaskOpt = { id: string; key: string; title: string };
 
 function NewTaskDialog({ open, onOpenChange, projects, onCreated }: { open: boolean; onOpenChange: (v: boolean) => void; projects: Project[]; onCreated: (task: CreatedTask) => void }) {
   const { register, handleSubmit, watch, formState: { errors }, reset, setValue } = useForm<TaskForm>({
     resolver: zodResolver(taskSchema),
     defaultValues: { priority: 'MEDIUM' },
   });
-  const [issueType, setIssueType] = useState<IssueType>('TASK');
-  const [tags, setTags] = useState<string[]>([]);
-  const [assigneeId, setAssigneeId] = useState<string>('');
-  const [parentTaskId, setParentTaskId] = useState<string>('');
-
   const projectId = watch('projectId');
   const statuses = useQuery({
     queryKey: ['task-statuses', projectId],
     queryFn: () => get<{ items: TaskStatus[] } | TaskStatus[]>('/task-statuses', { projectId }),
-    enabled: !!projectId,
-  });
-  const users = useQuery({ queryKey: ['users'], queryFn: () => get<{ items: AssigneeOpt[] }>('/users', { limit: 100 }) });
-  const projectTasks = useQuery({
-    queryKey: ['tasks', 'for-parent', projectId],
-    queryFn: () => get<{ items: TaskOpt[] }>('/tasks', { projectId, limit: 100 }),
     enabled: !!projectId,
   });
 
@@ -265,82 +250,23 @@ function NewTaskDialog({ open, onOpenChange, projects, onCreated }: { open: bool
         priority: v.priority,
         dueDate: v.dueDate ? new Date(v.dueDate).toISOString() : undefined,
         estimateHours: v.estimateHours ? Number(v.estimateHours) : undefined,
-        assigneeId: assigneeId || undefined,
-        parentTaskId: parentTaskId || undefined,
-        // Encode issue type as a "type:" tag so we can show the right icon.
-        tags: tagsFromIssueType(parentTaskId ? 'SUBTASK' : issueType, tags),
       }),
-    onSuccess: (task) => {
-      reset();
-      setTags([]); setAssigneeId(''); setParentTaskId(''); setIssueType('TASK');
-      onCreated(task);
-    },
+    onSuccess: (task) => { reset(); onCreated(task); },
     onError: (e) => toast.error(getApiErrorMessage(e)),
   });
 
   const statusItems = Array.isArray(statuses.data) ? statuses.data : statuses.data?.items ?? [];
-  const userItems = users.data?.items ?? [];
-  const taskItems = projectTasks.data?.items ?? [];
-  const effectiveType = parentTaskId ? 'SUBTASK' : issueType;
-  const TypeIcon = getIssueType(effectiveType).icon;
 
   return (
     <DialogRoot open={open} onOpenChange={onOpenChange}>
       <DialogContent size="lg">
-        <DialogHeader title="Create task" description="Press C anywhere to open this dialog" />
+        <DialogHeader title="New task" description="Add a task to a project" />
         <form onSubmit={handleSubmit((v) => create.mutate(v))}>
           <DialogBody className="space-y-4">
-            {/* Issue type pills */}
-            <div>
-              <Label>Issue type</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {ISSUE_TYPES.filter((t) => t.id !== 'SUBTASK').map((t) => {
-                  const Icon = t.icon;
-                  const active = effectiveType === t.id;
-                  const disabled = !!parentTaskId;
-                  return (
-                    <button
-                      type="button"
-                      key={t.id}
-                      onClick={() => !disabled && setIssueType(t.id)}
-                      disabled={disabled}
-                      className={cn(
-                        'inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium border transition-all',
-                        active
-                          ? 'border-[color:var(--color-primary)] bg-[color:var(--color-primary-soft)]'
-                          : 'border-[color:var(--color-border)] hover:border-[color:var(--color-border-strong)]',
-                        disabled && 'opacity-50',
-                      )}
-                      title={disabled ? 'Sub-task type is auto-set when a parent is picked' : t.label}
-                    >
-                      <span
-                        className="h-4 w-4 rounded inline-flex items-center justify-center"
-                        style={{ background: t.bg, color: t.color }}
-                      >
-                        <Icon className="h-2.5 w-2.5" />
-                      </span>
-                      {t.label}
-                    </button>
-                  );
-                })}
-                {parentTaskId && (
-                  <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)]">
-                    <span
-                      className="h-4 w-4 rounded inline-flex items-center justify-center"
-                      style={{ background: getIssueType('SUBTASK').bg, color: getIssueType('SUBTASK').color }}
-                    >
-                      <TypeIcon className="h-2.5 w-2.5" />
-                    </span>
-                    Sub-task
-                  </span>
-                )}
-              </div>
-            </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="projectId" required>Project</Label>
-                <Select id="projectId" {...register('projectId')} onChange={(e) => { setValue('projectId', e.target.value); setValue('statusId', ''); setParentTaskId(''); }}>
+                <Select id="projectId" {...register('projectId')} onChange={(e) => { setValue('projectId', e.target.value); setValue('statusId', ''); }}>
                   <option value="">Select project…</option>
                   {projects.map((p) => (<option key={p.id} value={p.id}>{p.code} · {p.name}</option>))}
                 </Select>
@@ -355,39 +281,15 @@ function NewTaskDialog({ open, onOpenChange, projects, onCreated }: { open: bool
                 <FieldError>{errors.statusId?.message}</FieldError>
               </div>
             </div>
-
             <div>
-              <Label htmlFor="title" required>Summary</Label>
+              <Label htmlFor="title" required>Title</Label>
               <Input id="title" {...register('title')} placeholder="What needs to be done?" autoFocus />
               <FieldError>{errors.title?.message}</FieldError>
             </div>
             <div>
               <Label htmlFor="description">Description</Label>
-              <Textarea id="description" {...register('description')} placeholder="Add detail. Press Cmd/Ctrl+Enter to submit." onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                  e.preventDefault();
-                  (e.currentTarget.form?.querySelector('button[type="submit"]') as HTMLButtonElement | null)?.click();
-                }
-              }} />
+              <Textarea id="description" {...register('description')} placeholder="Add more detail (optional)" />
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="assignee">Assignee</Label>
-                <Select id="assignee" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
-                  <option value="">Unassigned</option>
-                  {userItems.map((u) => (<option key={u.id} value={u.id}>{u.fullName ?? u.name ?? u.email}</option>))}
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="parent">Parent task (sub-task)</Label>
-                <Select id="parent" value={parentTaskId} onChange={(e) => setParentTaskId(e.target.value)} disabled={!projectId}>
-                  <option value="">{projectId ? 'None' : 'Pick a project first'}</option>
-                  {taskItems.map((t) => (<option key={t.id} value={t.id}>{t.key} · {t.title}</option>))}
-                </Select>
-              </div>
-            </div>
-
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label htmlFor="priority">Priority</Label>
@@ -407,11 +309,6 @@ function NewTaskDialog({ open, onOpenChange, projects, onCreated }: { open: bool
                 <Input id="estimateHours" type="number" step="0.25" min="0" {...register('estimateHours')} placeholder="0" />
               </div>
             </div>
-
-            <div>
-              <Label>Tags / labels</Label>
-              <TagsInput value={tags} onChange={setTags} placeholder="Add label and press Enter (e.g. backend, blocker)" />
-            </div>
           </DialogBody>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
@@ -424,73 +321,169 @@ function NewTaskDialog({ open, onOpenChange, projects, onCreated }: { open: bool
 }
 
 function TaskTable({ items }: { items: Task[] }) {
+  const qc = useQueryClient();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+
+  const allSelected = items.length > 0 && items.every((t) => selected.has(t.id));
+  const someSelected = selected.size > 0 && !allSelected;
+  const toggleAll = () => {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(items.map((t) => t.id)));
+  };
+  const toggleOne = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   return (
-    <Table>
-      <THead>
-        <TR>
-          <TH>Type</TH>
-          <TH>Task</TH>
-          <TH>Status</TH>
-          <TH>Priority</TH>
-          <TH>Tags</TH>
-          <TH>Assignee</TH>
-          <TH>Due date</TH>
-        </TR>
-      </THead>
-      <TBody>
-        {items.map((t) => {
-          const type = getIssueType(issueTypeFromTags(t.tags));
-          const TypeIcon = type.icon;
-          const tags = userTags(t.tags);
-          return (
-          <TR key={t.id} onClick={() => (window.location.href = `/tasks/${t.id}`)}>
-            <TD>
-              <span
-                className="h-5 w-5 rounded inline-flex items-center justify-center"
-                style={{ background: type.bg, color: type.color }}
-                title={type.label}
-              >
-                <TypeIcon className="h-3 w-3" />
-              </span>
-            </TD>
-            <TD>
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-[11px] text-[color:var(--color-fg-muted)] flex-shrink-0">{t.key}</span>
-                <span className="font-medium truncate">{t.title}</span>
-              </div>
-            </TD>
-            <TD>{t.status?.name ? <Badge tone="primary">{t.status.name}</Badge> : <span className="text-[color:var(--color-fg-subtle)]">—</span>}</TD>
-            <TD>{t.priority ? <Badge tone={priorityTone(t.priority)}>{t.priority}</Badge> : <span className="text-[color:var(--color-fg-subtle)]">—</span>}</TD>
-            <TD>
-              {tags.length === 0 ? (
-                <span className="text-[color:var(--color-fg-subtle)] text-xs">—</span>
-              ) : (
-                <div className="flex flex-wrap gap-1">
-                  {tags.slice(0, 3).map((tag) => (
-                    <Badge key={tag} tone="neutral" size="sm">{tag}</Badge>
-                  ))}
-                  {tags.length > 3 && <Badge tone="neutral" size="sm">+{tags.length - 3}</Badge>}
-                </div>
-              )}
-            </TD>
-            <TD>
-              {t.assignee ? (
-                <div className="flex items-center gap-2">
-                  <Avatar size="xs" name={t.assignee.name ?? t.assignee.email} />
-                  <span className="text-sm">{t.assignee.name ?? t.assignee.email}</span>
-                </div>
-              ) : (
-                <span className="text-[color:var(--color-fg-subtle)]">Unassigned</span>
-              )}
-            </TD>
-            <TD className="text-sm text-[color:var(--color-fg-muted)]">
-              {t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '—'}
-            </TD>
+    <>
+      {selected.size > 0 && (
+        <div className="mb-3 flex items-center justify-between gap-3 px-4 py-2 bg-[color:var(--color-primary-soft)] border border-[color:var(--color-brand-200)] rounded-lg">
+          <span className="text-sm font-medium text-[color:var(--color-primary)]">{selected.size} task{selected.size === 1 ? '' : 's'} selected</span>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="secondary" onClick={() => setBulkOpen(true)}>Bulk update</Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Clear</Button>
+          </div>
+        </div>
+      )}
+      <Table>
+        <THead>
+          <TR>
+            <TH className="w-10">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                onChange={toggleAll}
+                className="h-4 w-4 accent-[color:var(--color-primary)]"
+                aria-label="Select all"
+              />
+            </TH>
+            <TH>Task</TH>
+            <TH>Status</TH>
+            <TH>Priority</TH>
+            <TH>Assignee</TH>
+            <TH>Due date</TH>
           </TR>
-          );
-        })}
-      </TBody>
-    </Table>
+        </THead>
+        <TBody>
+          {items.map((t) => (
+            <TR
+              key={t.id}
+              onClick={() => { window.location.href = `/tasks/${t.id}`; }}
+            >
+              <TD>
+                <input
+                  type="checkbox"
+                  checked={selected.has(t.id)}
+                  onChange={() => toggleOne(t.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-4 w-4 accent-[color:var(--color-primary)]"
+                  aria-label={`Select ${t.key}`}
+                />
+              </TD>
+              <TD>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-[11px] text-[color:var(--color-fg-muted)] flex-shrink-0">{t.key}</span>
+                  <span className="font-medium truncate">{t.title}</span>
+                </div>
+              </TD>
+              <TD>{t.status?.name ? <Badge tone="primary">{t.status.name}</Badge> : <span className="text-[color:var(--color-fg-subtle)]">—</span>}</TD>
+              <TD>{t.priority ? <Badge tone={priorityTone(t.priority)}>{t.priority}</Badge> : <span className="text-[color:var(--color-fg-subtle)]">—</span>}</TD>
+              <TD>
+                {t.assignee ? (
+                  <div className="flex items-center gap-2">
+                    <Avatar size="xs" name={t.assignee.name ?? t.assignee.email} />
+                    <span className="text-sm">{t.assignee.name ?? t.assignee.email}</span>
+                  </div>
+                ) : (
+                  <span className="text-[color:var(--color-fg-subtle)]">Unassigned</span>
+                )}
+              </TD>
+              <TD className="text-sm text-[color:var(--color-fg-muted)]">
+                {t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '—'}
+              </TD>
+            </TR>
+          ))}
+        </TBody>
+      </Table>
+
+      {bulkOpen && (
+        <BulkUpdateDialog
+          taskIds={Array.from(selected)}
+          onClose={() => setBulkOpen(false)}
+          onDone={() => {
+            qc.invalidateQueries({ queryKey: ['tasks'] });
+            setSelected(new Set());
+            setBulkOpen(false);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+function BulkUpdateDialog({ taskIds, onClose, onDone }: { taskIds: string[]; onClose: () => void; onDone: () => void }) {
+  const [assignToUserId, setAssignToUserId] = useState('');
+  const [statusId, setStatusId] = useState('');
+  const [shiftDays, setShiftDays] = useState('');
+
+  const users = useQuery({ queryKey: ['users'], queryFn: () => get<{ items: { id: string; fullName?: string; name?: string; email?: string }[] }>('/users', { limit: 100 }) });
+
+  const apply = useMutation({
+    mutationFn: () => {
+      const body: Record<string, unknown> = { taskIds };
+      if (assignToUserId) body.assignToUserId = assignToUserId;
+      if (statusId) body.statusId = statusId;
+      if (shiftDays) body.dueDateShiftDays = Number(shiftDays);
+      return post('/tasks/bulk', body);
+    },
+    onSuccess: (res: unknown) => {
+      const updated = (res as { updated?: number })?.updated ?? taskIds.length;
+      toast.success(`Updated ${updated} task${updated === 1 ? '' : 's'}`);
+      onDone();
+    },
+    onError: (e) => toast.error(getApiErrorMessage(e)),
+  });
+
+  const hasAny = !!assignToUserId || !!statusId || !!shiftDays;
+
+  return (
+    <DialogRoot open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent>
+        <DialogHeader title={`Bulk update · ${taskIds.length} tasks`} description="Apply one or more changes to all selected tasks." />
+        <form onSubmit={(e) => { e.preventDefault(); if (hasAny) apply.mutate(); }}>
+          <DialogBody className="space-y-4">
+            <div>
+              <Label htmlFor="bulk-assign">Reassign all to</Label>
+              <Select id="bulk-assign" value={assignToUserId} onChange={(e) => setAssignToUserId(e.target.value)}>
+                <option value="">— No change —</option>
+                {(users.data?.items ?? []).map((u) => (
+                  <option key={u.id} value={u.id}>{u.fullName ?? u.name ?? u.email}</option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="bulk-shift">Shift due dates by (days)</Label>
+              <Input id="bulk-shift" type="number" step="1" value={shiftDays} onChange={(e) => setShiftDays(e.target.value)} placeholder="e.g. 3 (push out) or -2 (pull in)" />
+              <p className="text-xs text-[color:var(--color-fg-muted)] mt-1">Leave empty to keep current due dates.</p>
+            </div>
+            <p className="text-xs text-[color:var(--color-fg-muted)]">
+              💡 Note: bulk status change works only when all selected tasks are in the same project. Use the kanban for per-project moves.
+            </p>
+          </DialogBody>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button type="submit" loading={apply.isPending} disabled={!hasAny}>Apply to {taskIds.length} task{taskIds.length === 1 ? '' : 's'}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </DialogRoot>
   );
 }
 

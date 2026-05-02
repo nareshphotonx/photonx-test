@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Search, UserPlus, Users } from 'lucide-react';
+import { Search, ShieldCheck, UserPlus, Users } from 'lucide-react';
 import {
   Avatar, Badge, Button, Card, CardBody,
   DialogBody, DialogContent, DialogFooter, DialogHeader, DialogRoot,
@@ -14,6 +14,8 @@ import {
   TBody, TD, TH, THead, TR, Table,
 } from '@/components/ui';
 import { get, getApiErrorMessage, post } from '@/lib/api';
+
+type Role = { id: string; code: string; name: string; description?: string };
 
 type User = {
   id: string;
@@ -38,6 +40,7 @@ export default function UsersPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
+  const [rolesUser, setRolesUser] = useState<User | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['users'],
@@ -69,7 +72,7 @@ export default function UsersPage() {
         ) : (
           <Table>
             <THead>
-              <TR><TH>User</TH><TH>Email</TH><TH>Phone</TH><TH>Roles</TH><TH>Status</TH></TR>
+              <TR><TH>User</TH><TH>Email</TH><TH>Phone</TH><TH>Roles</TH><TH>Status</TH><TH align="right">Actions</TH></TR>
             </THead>
             <TBody>
               {items.map((u) => (
@@ -91,6 +94,11 @@ export default function UsersPage() {
                     </div>
                   </TD>
                   <TD><Badge tone={u.status === 'ACTIVE' || !u.status ? 'success' : 'neutral'}>{u.status ?? 'ACTIVE'}</Badge></TD>
+                  <TD align="right">
+                    <Button size="sm" variant="ghost" onClick={() => setRolesUser(u)}>
+                      <ShieldCheck className="h-3.5 w-3.5" /> Manage roles
+                    </Button>
+                  </TD>
                 </TR>
               ))}
             </TBody>
@@ -99,7 +107,82 @@ export default function UsersPage() {
       </div>
 
       <NewUserDialog open={open} onOpenChange={setOpen} onCreated={() => { qc.invalidateQueries({ queryKey: ['users'] }); setOpen(false); }} />
+      {rolesUser && (
+        <RolesDialog
+          user={rolesUser}
+          onClose={() => setRolesUser(null)}
+          onSaved={() => { qc.invalidateQueries({ queryKey: ['users'] }); setRolesUser(null); }}
+        />
+      )}
     </>
+  );
+}
+
+function RolesDialog({ user, onClose, onSaved }: { user: User; onClose: () => void; onSaved: () => void }) {
+  const roles = useQuery({ queryKey: ['roles'], queryFn: () => get<{ items: Role[] }>('/roles') });
+  const userRoleCodes = (user.roles ?? []).map((r) => typeof r === 'string' ? r : (r as { code?: string; name?: string }).code ?? (r as { name?: string }).name ?? '');
+  const [selected, setSelected] = useState<Set<string>>(new Set(userRoleCodes.filter(Boolean)));
+
+  const save = useMutation({
+    mutationFn: () => post(`/users/${user.id}/roles`, { roleCodes: Array.from(selected) }),
+    onSuccess: () => { toast.success('Roles updated'); onSaved(); },
+    onError: (e) => toast.error(getApiErrorMessage(e)),
+  });
+
+  const toggle = (code: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  };
+
+  const items = roles.data?.items ?? [];
+
+  return (
+    <DialogRoot open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent>
+        <DialogHeader title={`Manage roles · ${user.fullName ?? user.name ?? user.email ?? 'User'}`} description="Pick the roles this user should have" />
+        <DialogBody>
+          {roles.isLoading ? (
+            <Skeleton className="h-32" />
+          ) : items.length === 0 ? (
+            <p className="text-sm text-[color:var(--color-fg-muted)]">No roles configured yet. Add roles in /people/roles first.</p>
+          ) : (
+            <div className="space-y-2">
+              {items.map((r) => {
+                const checked = selected.has(r.code);
+                return (
+                  <label
+                    key={r.id}
+                    className="flex items-start gap-3 p-3 rounded-lg border border-[color:var(--color-border)] hover:border-[color:var(--color-border-strong)] cursor-pointer transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggle(r.code)}
+                      className="mt-0.5 h-4 w-4 accent-[color:var(--color-primary)]"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-sm">{r.name}</p>
+                        <Badge tone="neutral" size="sm" className="font-mono">{r.code}</Badge>
+                      </div>
+                      {r.description && <p className="text-xs text-[color:var(--color-fg-muted)] mt-0.5">{r.description}</p>}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </DialogBody>
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => save.mutate()} loading={save.isPending}>Save roles</Button>
+        </DialogFooter>
+      </DialogContent>
+    </DialogRoot>
   );
 }
 

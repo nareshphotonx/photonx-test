@@ -1,7 +1,10 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { primaryRole, useCurrentUser } from '@/lib/roles';
 import {
   Activity,
   ArrowRight,
@@ -64,9 +67,20 @@ const taskStatusData = [
 ];
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { user, loaded } = useCurrentUser();
+  const role = primaryRole(user);
+
+  // Regular employees go to their personal /me page; the dashboard is for managers.
+  useEffect(() => {
+    if (loaded && role === 'USER') router.replace('/me');
+  }, [loaded, role, router]);
+
+  const scope: 'super-admin' | 'team-lead' = role === 'TEAM_LEAD' ? 'team-lead' : 'super-admin';
+
   const dashboard = useQuery({
-    queryKey: ['dashboard', 'super-admin'],
-    queryFn: () => get<DashboardData>('/dashboard/super-admin'),
+    queryKey: ['dashboard', scope],
+    queryFn: () => get<DashboardData>(`/dashboard/${scope}`),
   });
   const tasks = useQuery({ queryKey: ['tasks', 'recent'], queryFn: () => get<{ items: Task[] }>('/tasks', { limit: 6 }) });
   const projects = useQuery({ queryKey: ['projects', 'recent'], queryFn: () => get<{ items: Project[] }>('/projects', { limit: 5 }) });

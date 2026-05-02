@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { NAV, type NavItem } from './nav-config';
+import { visibleNav, type NavItem } from './nav-config';
 import { cn } from '@/lib/cn';
 import { Badge } from '@/components/ui';
+import { useRole } from '@/lib/roles';
 
 export function Sidebar({
   collapsed,
@@ -73,10 +74,13 @@ function SidebarHeader({ collapsed, onCloseMobile }: { collapsed: boolean; onClo
 
 function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate: () => void }) {
   const pathname = usePathname();
+  const { roles, loaded } = useRole();
+  // Show empty until role hydrates so we don't flash admin items to a USER.
+  const groups = loaded ? visibleNav(roles) : [];
 
   return (
     <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
-      {NAV.map((group, gi) => (
+      {groups.map((group, gi) => (
         <div key={gi}>
           {group.label && !collapsed && (
             <p className="px-2 mb-1 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--color-fg-subtle)]">
