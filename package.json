@@ -11,6 +11,7 @@
     "test": "corepack pnpm --filter @photonx/api test",
     "prisma:generate": "corepack pnpm --filter @photonx/api prisma:generate",
     "prisma:migrate": "corepack pnpm --filter @photonx/api prisma:migrate",
-    "prisma:studio": "corepack pnpm --filter @photonx/api prisma:studio"
+    "prisma:studio": "corepack pnpm --filter @photonx/api prisma:studio",
+    "prisma:seed": "corepack pnpm --filter @photonx/api prisma:seed"
   }
 }

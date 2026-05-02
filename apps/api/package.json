@@ -9,11 +9,14 @@
     "start": "node dist/main.js",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "test": "jest",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:generate": "dotenv -e ../../.env -- prisma generate --schema prisma/schema.prisma",
+    "prisma:migrate": "dotenv -e ../../.env -- prisma migrate dev --schema prisma/schema.prisma",
+    "prisma:studio": "dotenv -e ../../.env -- prisma studio --schema prisma/schema.prisma",
+    "prisma:seed": "dotenv -e ../../.env -- ts-node prisma/seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.938.0",
+    "@aws-sdk/s3-request-presigner": "^3.938.0",
     "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.1.11",
     "@nestjs/config": "^4.0.2",
@@ -23,6 +26,7 @@
     "@nestjs/platform-express": "^11.1.11",
     "@nestjs/swagger": "^11.4.1",
     "@prisma/client": "^6.8.2",
+    "bcryptjs": "^2.4.3",
     "bullmq": "^5.43.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
@@ -37,9 +41,11 @@
     "@nestjs/schematics": "^11.0.6",
     "@nestjs/testing": "^11.1.11",
     "@types/express": "^5.0.5",
+    "@types/bcryptjs": "^2.4.6",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.15.3",
     "@types/passport-jwt": "^4.0.1",
+    "dotenv-cli": "^8.0.0",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^16.4.0",
@@ -53,5 +59,8 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   }
 }

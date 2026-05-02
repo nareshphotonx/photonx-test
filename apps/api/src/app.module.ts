@@ -7,22 +7,37 @@ import {
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { AppLogger } from './common/logger/app.logger';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { QueueModule } from './common/queue/queue.module';
-import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+import { PermissionsGuard } from './common/guards/permissions.guard';
 import { RolesGuard } from './common/guards/roles.guard';
-import { AuthModule } from './modules/auth/auth.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { HealthModule } from './modules/health/health.module';
+import { AttachmentsModule } from './modules/attachments/attachments.module';
+import { NotificationPreferencesModule } from './modules/notification-preferences/notification-preferences.module';
+import { OfficePolicyModule } from './modules/office-policy/office-policy.module';
+import { MilestonesModule } from './modules/milestones/milestones.module';
+import { ProjectsModule } from './modules/projects/projects.module';
+import { RecurringTaskTemplatesModule } from './modules/recurring-task-templates/recurring-task-templates.module';
+import { RolesModule } from './modules/roles/roles.module';
+import { TaskStatusesModule } from './modules/task-statuses/task-statuses.module';
+import { TaskWorkflowsModule } from './modules/task-workflows/task-workflows.module';
+import { TasksModule } from './modules/tasks/tasks.module';
 import { TenantContextGuard } from './modules/tenant/guards/tenant-context.guard';
-import { TenantModule } from './modules/tenant/tenant.module';
 import { TenantContextMiddleware } from './modules/tenant/middleware/tenant-context.middleware';
+import { TenantModule } from './modules/tenant/tenant.module';
+import { TeamsModule } from './modules/teams/teams.module';
+import { TenantsModule } from './modules/tenants/tenants.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env'],
+      envFilePath: ['apps/api/.env', '.env'],
     }),
     PrismaModule,
     QueueModule,
@@ -30,12 +45,33 @@ import { TenantContextMiddleware } from './modules/tenant/middleware/tenant-cont
     TenantModule,
     AuditModule,
     HealthModule,
+    TenantsModule,
+    UsersModule,
+    TeamsModule,
+    RolesModule,
+    OfficePolicyModule,
+    NotificationPreferencesModule,
+    ProjectsModule,
+    MilestonesModule,
+    TaskStatusesModule,
+    TaskWorkflowsModule,
+    TasksModule,
+    AttachmentsModule,
+    RecurringTaskTemplatesModule,
   ],
   providers: [
     AppLogger,
     {
       provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
       useClass: TenantContextGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PermissionsGuard,
     },
     {
       provide: APP_GUARD,

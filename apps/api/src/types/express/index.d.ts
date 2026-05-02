@@ -1,8 +1,10 @@
 declare namespace Express {
   interface User {
     sub: string;
-    tenantId?: string;
-    roles?: string[];
+    tenantId: string;
+    sessionId: string;
+    roles: string[];
+    permissions: string[];
     [key: string]: unknown;
   }
 

@@ -14,7 +14,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: JwtPayload): JwtPayload {
-    return payload;
+  validate(payload: JwtPayload): Express.User {
+    return {
+      sub: payload.sub,
+      tenantId: payload.tenantId,
+      sessionId: payload.sessionId,
+      roles: payload.roles,
+      permissions: payload.permissions,
+    };
   }
 }

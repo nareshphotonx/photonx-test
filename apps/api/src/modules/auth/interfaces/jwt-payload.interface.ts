@@ -1,9 +1,9 @@
-import { type Role } from '../../../common/enums/role.enum';
-
 export interface JwtPayload {
   sub: string;
-  tenantId?: string;
-  roles?: Role[];
+  tenantId: string;
+  sessionId: string;
+  roles: string[];
+  permissions: string[];
   iat?: number;
   exp?: number;
 }
