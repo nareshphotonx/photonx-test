@@ -5,10 +5,12 @@ import {
   IsDate,
   IsEnum,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   Matches,
   MaxLength,
+  Min,
 } from 'class-validator';
 
 export class CreateProjectDto {
@@ -39,6 +41,24 @@ export class CreateProjectDto {
   @IsOptional()
   @IsEnum(ProjectStatus)
   status?: ProjectStatus;
+
+  @ApiPropertyOptional({ example: 150000 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  budgetAmount?: number;
+
+  @ApiPropertyOptional({ example: 'INR' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  budgetCurrency?: string;
+
+  @ApiPropertyOptional({ example: 15, description: 'Overhead percentage' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  overheadPercent?: number;
 
   @ApiPropertyOptional({ example: '2026-05-01T00:00:00.000Z' })
   @IsOptional()

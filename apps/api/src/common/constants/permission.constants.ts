@@ -34,6 +34,14 @@ export const PERMISSIONS = {
   PROJECTS_MEMBERS_WRITE: 'projects:members:write',
   PROJECTS_COSTS_WRITE: 'projects:costs:write',
   PROJECTS_BURN_READ: 'projects:burn:read',
+  PROJECTS_COST_SUMMARY_READ: 'projects:cost_summary:read',
+
+  TIME_ENTRIES_CREATE: 'time_entries:create',
+  TIME_ENTRIES_READ: 'time_entries:read',
+  TIME_ENTRIES_ADJUST: 'time_entries:adjust',
+  TIME_ENTRIES_UNLOCK: 'time_entries:unlock',
+  TIME_ENTRIES_SUMMARY_READ: 'time_entries:summary:read',
+  TIME_ENTRIES_MANAGER_BULK: 'time_entries:manager_bulk',
 
   MILESTONES_CREATE: 'milestones:create',
   MILESTONES_READ: 'milestones:read',

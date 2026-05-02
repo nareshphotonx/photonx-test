@@ -356,6 +356,9 @@ async function seed(): Promise<void> {
       code: 'T',
       description: 'Seeded Phase 2 project',
       status: ProjectStatus.ACTIVE,
+      budgetAmount: new Prisma.Decimal(150000),
+      budgetCurrency: 'INR',
+      overheadPercent: new Prisma.Decimal(12.5),
       createdBy: superAdmin.id,
       updatedBy: superAdmin.id,
       nextTaskSequence: 101,
@@ -365,8 +368,41 @@ async function seed(): Promise<void> {
       name: 'Tenant Platform Upgrade',
       description: 'Seeded Phase 2 project',
       status: ProjectStatus.ACTIVE,
+      budgetAmount: new Prisma.Decimal(150000),
+      budgetCurrency: 'INR',
+      overheadPercent: new Prisma.Decimal(12.5),
       updatedBy: superAdmin.id,
     },
+  });
+
+  await prisma.rateCard.createMany({
+    data: [
+      {
+        tenantId: tenant.id,
+        userId: superAdmin.id,
+        hourlyRate: new Prisma.Decimal(2500),
+        currency: 'INR',
+        effectiveFrom: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: superAdmin.id,
+      },
+      {
+        tenantId: tenant.id,
+        userId: teamLead.id,
+        hourlyRate: new Prisma.Decimal(1800),
+        currency: 'INR',
+        effectiveFrom: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: superAdmin.id,
+      },
+      {
+        tenantId: tenant.id,
+        userId: normalUser.id,
+        hourlyRate: new Prisma.Decimal(1200),
+        currency: 'INR',
+        effectiveFrom: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: superAdmin.id,
+      },
+    ],
+    skipDuplicates: true,
   });
 
   await prisma.projectMember.createMany({

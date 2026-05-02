@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { Prisma, ProjectStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { BudgetAlertsService } from '../../common/services/budget-alerts.service';
+import { ProjectCostingService } from '../../common/services/project-costing.service';
 import { TenantRbacScopeService } from '../../common/services/tenant-rbac-scope.service';
 import { AuditService } from '../audit/audit.service';
 import { AddProjectCostsDto } from './dto/add-project-costs.dto';
@@ -21,6 +23,8 @@ export class ProjectsService {
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     private readonly scopeService: TenantRbacScopeService,
+    private readonly projectCostingService: ProjectCostingService,
+    private readonly budgetAlertsService: BudgetAlertsService,
   ) {}
 
   async createProject(
@@ -39,6 +43,14 @@ export class ProjectsService {
     }
 
     const code = this.normalizeCode(dto.code);
+    const tenantCurrency = await this.getTenantCurrency(tenantId);
+    const budgetCurrency = dto.budgetCurrency ?? tenantCurrency;
+
+    if (dto.budgetAmount !== undefined && budgetCurrency !== tenantCurrency) {
+      throw new BadRequestException(
+        `Budget currency must match tenant currency (${tenantCurrency})`,
+      );
+    }
 
     await this.assertTeamInTenant(tenantId, dto.teamId);
 
@@ -52,6 +64,15 @@ export class ProjectsService {
             description: dto.description,
             teamId: dto.teamId,
             status: dto.status ?? ProjectStatus.ACTIVE,
+            budgetAmount:
+              dto.budgetAmount !== undefined
+                ? new Prisma.Decimal(dto.budgetAmount)
+                : undefined,
+            budgetCurrency: dto.budgetAmount !== undefined ? budgetCurrency : undefined,
+            overheadPercent:
+              dto.overheadPercent !== undefined
+                ? new Prisma.Decimal(dto.overheadPercent)
+                : undefined,
             startDate: dto.startDate,
             endDate: dto.endDate,
             createdBy: actor.sub,
@@ -248,6 +269,17 @@ export class ProjectsService {
     await this.scopeService.ensureProjectManageAccess(tenantId, projectId, actor);
 
     await this.assertTeamInTenant(tenantId, dto.teamId ?? undefined);
+    const tenantCurrency = await this.getTenantCurrency(tenantId);
+
+    if (
+      dto.budgetCurrency !== undefined &&
+      dto.budgetCurrency !== null &&
+      dto.budgetCurrency !== tenantCurrency
+    ) {
+      throw new BadRequestException(
+        `Budget currency must match tenant currency (${tenantCurrency})`,
+      );
+    }
 
     const updated = await this.prisma.project.update({
       where: { id: projectId },
@@ -255,6 +287,24 @@ export class ProjectsService {
         name: dto.name,
         description: dto.description,
         status: dto.status,
+        budgetAmount:
+          dto.budgetAmount !== undefined
+            ? dto.budgetAmount === null
+              ? null
+              : new Prisma.Decimal(dto.budgetAmount)
+            : undefined,
+        budgetCurrency:
+          dto.budgetCurrency !== undefined
+            ? dto.budgetCurrency === null
+              ? null
+              : dto.budgetCurrency
+            : undefined,
+        overheadPercent:
+          dto.overheadPercent !== undefined
+            ? dto.overheadPercent === null
+              ? null
+              : new Prisma.Decimal(dto.overheadPercent)
+            : undefined,
         startDate: dto.startDate,
         endDate: dto.endDate,
         teamId: dto.teamId,
@@ -368,6 +418,15 @@ export class ProjectsService {
     dto: AddProjectCostsDto,
   ): Promise<{ projectId: string; added: number }> {
     await this.scopeService.ensureProjectManageAccess(tenantId, projectId, actor);
+    const tenantCurrency = await this.getTenantCurrency(tenantId);
+
+    for (const item of dto.items) {
+      if (item.currency !== tenantCurrency) {
+        throw new BadRequestException(
+          `Project cost currency must match tenant currency (${tenantCurrency})`,
+        );
+      }
+    }
 
     await this.prisma.projectCost.createMany({
       data: dto.items.map((item) => ({
@@ -393,6 +452,8 @@ export class ProjectsService {
       },
     });
 
+    await this.budgetAlertsService.evaluateProjectBudget(tenantId, projectId, actor.sub);
+
     return {
       projectId,
       added: dto.items.length,
@@ -407,67 +468,81 @@ export class ProjectsService {
   ) {
     await this.scopeService.ensureProjectReadAccess(tenantId, projectId, actor);
 
-    const tasks = await this.prisma.task.findMany({
-      where: {
+    const [components, dailyBreakdown] = await Promise.all([
+      this.projectCostingService.calculateProjectCostComponents(
         tenantId,
         projectId,
-        deletedAt: null,
-        ...(query.from || query.to
-          ? {
-              createdAt: {
-                gte: query.from,
-                lte: query.to,
-              },
-            }
-          : {}),
+        query,
+      ),
+      this.projectCostingService.getDailyCostBreakdown(tenantId, projectId, query),
+    ]);
+
+    const thresholds = [
+      {
+        threshold: 80,
+        reached:
+          components.utilizationPct !== null ? components.utilizationPct >= 80 : false,
       },
-      include: {
-        status: {
-          select: {
-            isDone: true,
-          },
-        },
+      {
+        threshold: 100,
+        reached:
+          components.utilizationPct !== null ? components.utilizationPct >= 100 : false,
       },
-    });
-
-    const byDate = new Map<string, { estimatedHours: number; completedHours: number }>();
-
-    for (const task of tasks) {
-      const estimate = Number(task.estimateHours ?? 0);
-      const createdDateKey = task.createdAt.toISOString().slice(0, 10);
-
-      const existingEstimate = byDate.get(createdDateKey) ?? {
-        estimatedHours: 0,
-        completedHours: 0,
-      };
-
-      existingEstimate.estimatedHours += estimate;
-      byDate.set(createdDateKey, existingEstimate);
-
-      if (task.status.isDone) {
-        const completedDateKey = task.updatedAt.toISOString().slice(0, 10);
-        const existingCompleted = byDate.get(completedDateKey) ?? {
-          estimatedHours: 0,
-          completedHours: 0,
-        };
-
-        existingCompleted.completedHours += estimate;
-        byDate.set(completedDateKey, existingCompleted);
-      }
-    }
-
-    const points = Array.from(byDate.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, values]) => ({
-        date,
-        estimatedHours: Number(values.estimatedHours.toFixed(2)),
-        completedHours: Number(values.completedHours.toFixed(2)),
-      }));
+      {
+        threshold: 120,
+        reached:
+          components.utilizationPct !== null ? components.utilizationPct >= 120 : false,
+      },
+    ];
 
     return {
       projectId,
-      metric: 'estimated_vs_completed_hours_daily',
-      points,
+      metric: 'cost_burn',
+      from: query.from ?? null,
+      to: query.to ?? null,
+      currency: components.budgetCurrency,
+      laborCost: components.laborCost,
+      overheadCost: components.overheadCost,
+      projectCosts: components.projectCosts,
+      totalBurn: components.totalBurn,
+      budgetAmount: components.budgetAmount,
+      utilizationPct: components.utilizationPct,
+      thresholds,
+      days: dailyBreakdown,
+    };
+  }
+
+  async getProjectCostSummary(
+    tenantId: string,
+    actor: Express.User,
+    projectId: string,
+    query: GetProjectBurnDto,
+  ) {
+    await this.scopeService.ensureProjectReadAccess(tenantId, projectId, actor);
+
+    const [components, dailyBreakdown] = await Promise.all([
+      this.projectCostingService.calculateProjectCostComponents(
+        tenantId,
+        projectId,
+        query,
+      ),
+      this.projectCostingService.getDailyCostBreakdown(tenantId, projectId, query),
+    ]);
+
+    return {
+      projectId,
+      currency: components.budgetCurrency,
+      summary: {
+        laborCost: components.laborCost,
+        overheadCost: components.overheadCost,
+        projectCosts: components.projectCosts,
+        totalCost: components.totalBurn,
+      },
+      budget: {
+        amount: components.budgetAmount,
+        utilizationPct: components.utilizationPct,
+      },
+      days: dailyBreakdown,
     };
   }
 
@@ -500,5 +575,14 @@ export class ProjectsService {
     if (!team) {
       throw new BadRequestException('Invalid teamId for tenant');
     }
+  }
+
+  private async getTenantCurrency(tenantId: string): Promise<string> {
+    const settings = await this.prisma.tenantSetting.findUnique({
+      where: { tenantId },
+      select: { currency: true },
+    });
+
+    return settings?.currency ?? 'INR';
   }
 }

@@ -26,6 +26,7 @@ import { RolesModule } from './modules/roles/roles.module';
 import { TaskStatusesModule } from './modules/task-statuses/task-statuses.module';
 import { TaskWorkflowsModule } from './modules/task-workflows/task-workflows.module';
 import { TasksModule } from './modules/tasks/tasks.module';
+import { TimeEntriesModule } from './modules/time-entries/time-entries.module';
 import { TenantContextGuard } from './modules/tenant/guards/tenant-context.guard';
 import { TenantContextMiddleware } from './modules/tenant/middleware/tenant-context.middleware';
 import { TenantModule } from './modules/tenant/tenant.module';
@@ -56,6 +57,7 @@ import { UsersModule } from './modules/users/users.module';
     TaskStatusesModule,
     TaskWorkflowsModule,
     TasksModule,
+    TimeEntriesModule,
     AttachmentsModule,
     RecurringTaskTemplatesModule,
   ],

@@ -127,14 +127,29 @@ export class ProjectsController {
 
   @Get(':id/burn')
   @RequirePermissions(PERMISSIONS.PROJECTS_BURN_READ)
-  @ApiOperation({ summary: 'Get project burn points (estimated vs completed hours)' })
+  @ApiOperation({
+    summary: 'Get project cost burn (labor + overhead + project costs)',
+  })
   @ApiParam({ name: 'id', example: 'cuid_project_1' })
-  @ApiOkResponse({ description: 'Project burn chart points' })
+  @ApiOkResponse({ description: 'Project cost burn with thresholds and daily breakdown' })
   getBurn(
     @CurrentUser() user: Express.User,
     @Param('id') id: string,
     @Query() query: GetProjectBurnDto,
   ) {
     return this.projectsService.getProjectBurn(user.tenantId, user, id, query);
+  }
+
+  @Get(':id/cost-summary')
+  @RequirePermissions(PERMISSIONS.PROJECTS_COST_SUMMARY_READ)
+  @ApiOperation({ summary: 'Get project cost summary components and daily breakdown' })
+  @ApiParam({ name: 'id', example: 'cuid_project_1' })
+  @ApiOkResponse({ description: 'Project cost summary' })
+  getCostSummary(
+    @CurrentUser() user: Express.User,
+    @Param('id') id: string,
+    @Query() query: GetProjectBurnDto,
+  ) {
+    return this.projectsService.getProjectCostSummary(user.tenantId, user, id, query);
   }
 }

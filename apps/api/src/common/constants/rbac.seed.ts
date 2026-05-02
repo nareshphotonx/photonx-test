@@ -122,6 +122,41 @@ export const DEFAULT_PERMISSION_DEFINITIONS: Array<{
     name: 'Read Project Burn',
     description: 'Read project burn metrics',
   },
+  {
+    code: PERMISSIONS.PROJECTS_COST_SUMMARY_READ,
+    name: 'Read Project Cost Summary',
+    description: 'Read project cost summary metrics',
+  },
+  {
+    code: PERMISSIONS.TIME_ENTRIES_CREATE,
+    name: 'Create Time Entries',
+    description: 'Create time entries',
+  },
+  {
+    code: PERMISSIONS.TIME_ENTRIES_READ,
+    name: 'Read Time Entries',
+    description: 'Read time entries',
+  },
+  {
+    code: PERMISSIONS.TIME_ENTRIES_ADJUST,
+    name: 'Adjust Time Entries',
+    description: 'Create time entry adjustments',
+  },
+  {
+    code: PERMISSIONS.TIME_ENTRIES_UNLOCK,
+    name: 'Unlock Time Entries',
+    description: 'Unlock locked time entries with reason',
+  },
+  {
+    code: PERMISSIONS.TIME_ENTRIES_SUMMARY_READ,
+    name: 'Read Time Entry Summary',
+    description: 'Read grouped time summary metrics',
+  },
+  {
+    code: PERMISSIONS.TIME_ENTRIES_MANAGER_BULK,
+    name: 'Manager Bulk Time Entry',
+    description: 'Create bulk manager time entries',
+  },
 
   {
     code: PERMISSIONS.MILESTONES_CREATE,
@@ -257,6 +292,13 @@ export const DEFAULT_ROLE_PERMISSION_CODES: Record<Role, PermissionCode[]> = {
     PERMISSIONS.PROJECTS_MEMBERS_WRITE,
     PERMISSIONS.PROJECTS_COSTS_WRITE,
     PERMISSIONS.PROJECTS_BURN_READ,
+    PERMISSIONS.PROJECTS_COST_SUMMARY_READ,
+    PERMISSIONS.TIME_ENTRIES_CREATE,
+    PERMISSIONS.TIME_ENTRIES_READ,
+    PERMISSIONS.TIME_ENTRIES_ADJUST,
+    PERMISSIONS.TIME_ENTRIES_UNLOCK,
+    PERMISSIONS.TIME_ENTRIES_SUMMARY_READ,
+    PERMISSIONS.TIME_ENTRIES_MANAGER_BULK,
     PERMISSIONS.MILESTONES_CREATE,
     PERMISSIONS.MILESTONES_READ,
     PERMISSIONS.MILESTONES_UPDATE,
@@ -293,5 +335,9 @@ export const DEFAULT_ROLE_PERMISSION_CODES: Record<Role, PermissionCode[]> = {
     PERMISSIONS.TASKS_COMMENTS_CREATE,
     PERMISSIONS.TASKS_COMMENTS_READ,
     PERMISSIONS.ATTACHMENTS_READ,
+    PERMISSIONS.TIME_ENTRIES_CREATE,
+    PERMISSIONS.TIME_ENTRIES_READ,
+    PERMISSIONS.TIME_ENTRIES_ADJUST,
+    PERMISSIONS.TIME_ENTRIES_SUMMARY_READ,
   ],
 };
