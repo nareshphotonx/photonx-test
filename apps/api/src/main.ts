@@ -15,6 +15,15 @@ async function bootstrap(): Promise<void> {
   const logger = app.get(AppLogger);
   app.useLogger(logger);
 
+  app.enableCors({
+    origin: (process.env.CORS_ORIGINS ?? 'http://localhost:3001,http://localhost:3000')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id', 'x-request-id'],
+  });
+
   app.setGlobalPrefix('api', {
     exclude: [
       { path: 'health', method: RequestMethod.GET },
