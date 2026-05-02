@@ -8,6 +8,7 @@ NestJS backend for PhotonX WorkOS (WhatsApp-first HRMS + project OS), currently 
 - Phase 4: HRMS modules (attendance, leave/WFH, holidays, expenses, approvals)
 - Phase 5: integrations + notification system (WhatsApp, GitHub, Slack, email)
 - Phase 6: AI agent + tenant-safe document RAG
+- Phase 7: KPI dashboard + monthly reviews
 
 ## Stack
 
@@ -130,6 +131,8 @@ corepack pnpm dev
 - Email integration: `/api/integrations/email/settings`
 - AI agent: `/api/ai/chat`, `/api/ai/tools`, `/api/ai/messages`
 - Documents: `/api/documents/*`
+- KPI dashboard: `/api/dashboard/super-admin`, `/api/dashboard/team-lead`, `/api/dashboard/user-performance/:userId`, `/api/dashboard/project/:projectId`
+- Reviews: `/api/review-cycles/*`, `/api/reviews/*`
 - Webhooks (no `/api` prefix): `/webhooks/whatsapp`, `/webhooks/github`
 
 ## WhatsApp Command Test

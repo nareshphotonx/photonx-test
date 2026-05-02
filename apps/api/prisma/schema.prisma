@@ -229,6 +229,18 @@ enum ExpenseStatus {
   REJECTED
 }
 
+enum ReviewCycleStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum ReviewEntryStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+}
+
 model Tenant {
   id                      String                   @id @default(cuid())
   name                    String
@@ -299,6 +311,9 @@ model Tenant {
   expenses                Expense[]
   approvalRequests        ApprovalRequest[]
   approvalSteps           ApprovalStep[]
+  taskStatusTransitions   TaskStatusTransition[]
+  reviewCycles            ReviewCycle[]
+  reviewEntries           ReviewEntry[]
 
   @@index([isActive])
 }
@@ -371,6 +386,10 @@ model User {
   requestedApprovals      ApprovalRequest[]        @relation("ApprovalRequester")
   assignedApprovalSteps   ApprovalStep[]           @relation("ApprovalStepApprover")
   actedApprovalSteps      ApprovalStep[]           @relation("ApprovalStepActor")
+  createdReviewCycles     ReviewCycle[]            @relation("ReviewCycleCreator")
+  reviewedEntries         ReviewEntry[]            @relation("ReviewReviewedUser")
+  createdReviewEntries    ReviewEntry[]            @relation("ReviewReviewer")
+  approvedReviewEntries   ReviewEntry[]            @relation("ReviewApprover")
 
   @@unique([tenantId, email])
   @@unique([tenantId, phone])
@@ -548,6 +567,8 @@ model Project {
   status           ProjectStatus  @default(ACTIVE)
   budgetAmount     Decimal?       @db.Decimal(12, 2)
   budgetCurrency   String?
+  billableAmount   Decimal?       @db.Decimal(12, 2)
+  billableCurrency String?
   overheadPercent  Decimal?       @db.Decimal(6, 2)
   startDate        DateTime?
   endDate          DateTime?
@@ -564,6 +585,7 @@ model Project {
   taskStatuses     TaskStatus[]
   taskWorkflows    TaskWorkflow[]
   taskWorkflowTransitions TaskWorkflowTransition[]
+  taskStatusTransitions TaskStatusTransition[]
   tasks            Task[]
   taskDependencies TaskDependency[]
   taskComments     TaskComment[]
@@ -665,6 +687,7 @@ model TaskStatus {
   workflowTransitionsFrom TaskWorkflowTransition[] @relation("WorkflowFromStatus")
   workflowTransitionsTo   TaskWorkflowTransition[] @relation("WorkflowToStatus")
   recurringTemplates   RecurringTaskTemplate[]
+  enteredTransitions   TaskStatusTransition[]      @relation("TaskStatusTransitionTo")
 
   @@unique([tenantId, projectId, code])
   @@index([tenantId, projectId, position])
@@ -746,6 +769,7 @@ model Task {
   githubUnmatchedCommits GitHubUnmatchedCommit[] @relation("GitHubUnmatchedTask")
   timeEntries          TimeEntry[]
   recurringTemplate    RecurringTaskTemplate? @relation(fields: [recurringTemplateId], references: [id], onDelete: SetNull)
+  statusTransitions    TaskStatusTransition[]
 
   @@unique([tenantId, key])
   @@index([tenantId, projectId])
@@ -755,6 +779,27 @@ model Task {
   @@index([tenantId, dueDate])
   @@index([tenantId, parentTaskId])
   @@index([tenantId, deletedAt])
+  @@index([tenantId, assigneeId, createdAt])
+}
+
+model TaskStatusTransition {
+  id          String     @id @default(cuid())
+  tenantId    String
+  projectId   String
+  taskId      String
+  fromStatusId String?
+  toStatusId  String
+  enteredAt   DateTime   @default(now())
+  changedBy   String?
+  createdAt   DateTime   @default(now())
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task        Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  toStatus    TaskStatus @relation("TaskStatusTransitionTo", fields: [toStatusId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, taskId, enteredAt])
+  @@index([tenantId, projectId, enteredAt])
+  @@index([tenantId, toStatusId, enteredAt])
 }
 
 model TaskDependency {
@@ -1335,6 +1380,55 @@ model ApprovalStep {
   @@unique([approvalRequestId, stepOrder])
   @@index([tenantId, approverId, status])
   @@index([tenantId, approvalRequestId])
+}
+
+model ReviewCycle {
+  id          String            @id @default(cuid())
+  tenantId    String
+  year        Int
+  month       Int
+  title       String
+  status      ReviewCycleStatus @default(DRAFT)
+  startDate   DateTime?
+  endDate     DateTime?
+  notes       String?           @db.Text
+  createdById String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy   User              @relation("ReviewCycleCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  entries     ReviewEntry[]
+
+  @@unique([tenantId, year, month])
+  @@index([tenantId, status, year, month])
+}
+
+model ReviewEntry {
+  id            String           @id @default(cuid())
+  tenantId      String
+  cycleId       String
+  reviewedUserId String
+  reviewerId    String
+  overallRating Int
+  strengths     String?          @db.Text
+  improvements  String?          @db.Text
+  summary       String?          @db.Text
+  status        ReviewEntryStatus @default(DRAFT)
+  submittedAt   DateTime?
+  approvedAt    DateTime?
+  approvedById  String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cycle         ReviewCycle      @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  reviewedUser  User             @relation("ReviewReviewedUser", fields: [reviewedUserId], references: [id], onDelete: Cascade)
+  reviewer      User             @relation("ReviewReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+  approvedBy    User?            @relation("ReviewApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, cycleId, status])
+  @@index([tenantId, reviewedUserId, status])
+  @@index([tenantId, reviewerId, status])
+  @@unique([tenantId, cycleId, reviewedUserId, reviewerId])
 }
 
 model NotificationEvent {

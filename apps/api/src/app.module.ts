@@ -30,8 +30,11 @@ import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { LeaveModule } from './modules/leave/leave.module';
 import { MilestonesModule } from './modules/milestones/milestones.module';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { DashboardModule } from './modules/kpi-dashboard/dashboard.module';
 import { RecurringTaskTemplatesModule } from './modules/recurring-task-templates/recurring-task-templates.module';
 import { RolesModule } from './modules/roles/roles.module';
+import { ReviewCyclesModule } from './modules/review-cycles/review-cycles.module';
+import { ReviewEntriesModule } from './modules/review-entries/review-entries.module';
 import { TaskStatusesModule } from './modules/task-statuses/task-statuses.module';
 import { TaskWorkflowsModule } from './modules/task-workflows/task-workflows.module';
 import { TasksModule } from './modules/tasks/tasks.module';
@@ -84,6 +87,9 @@ import { WfhModule } from './modules/wfh/wfh.module';
     WebhooksModule,
     AiAgentModule,
     DocumentsModule,
+    DashboardModule,
+    ReviewCyclesModule,
+    ReviewEntriesModule,
   ],
   providers: [
     AppLogger,

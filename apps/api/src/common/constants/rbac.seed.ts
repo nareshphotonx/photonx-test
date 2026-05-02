@@ -561,6 +561,56 @@ export const DEFAULT_PERMISSION_DEFINITIONS: Array<{
     name: 'Delete Documents',
     description: 'Delete tenant document sources',
   },
+  {
+    code: PERMISSIONS.DASHBOARD_SUPER_ADMIN_READ,
+    name: 'Read Super Admin Dashboard',
+    description: 'Read tenant-wide KPI dashboard',
+  },
+  {
+    code: PERMISSIONS.DASHBOARD_TEAM_LEAD_READ,
+    name: 'Read Team Lead Dashboard',
+    description: 'Read team-scoped KPI dashboard',
+  },
+  {
+    code: PERMISSIONS.DASHBOARD_USER_PERFORMANCE_READ,
+    name: 'Read User Performance Dashboard',
+    description: 'Read scoped user performance KPIs',
+  },
+  {
+    code: PERMISSIONS.DASHBOARD_PROJECT_READ,
+    name: 'Read Project Dashboard',
+    description: 'Read project KPI dashboard',
+  },
+  {
+    code: PERMISSIONS.REVIEW_CYCLES_CREATE,
+    name: 'Create Review Cycles',
+    description: 'Create monthly review cycles',
+  },
+  {
+    code: PERMISSIONS.REVIEW_CYCLES_READ,
+    name: 'Read Review Cycles',
+    description: 'Read monthly review cycles',
+  },
+  {
+    code: PERMISSIONS.REVIEWS_CREATE,
+    name: 'Create Reviews',
+    description: 'Create review entries',
+  },
+  {
+    code: PERMISSIONS.REVIEWS_READ,
+    name: 'Read Reviews',
+    description: 'Read review entries',
+  },
+  {
+    code: PERMISSIONS.REVIEWS_SUBMIT,
+    name: 'Submit Reviews',
+    description: 'Submit review entries',
+  },
+  {
+    code: PERMISSIONS.REVIEWS_APPROVE,
+    name: 'Approve Reviews',
+    description: 'Approve submitted review entries',
+  },
 ];
 
 export const DEFAULT_ROLE_PERMISSION_CODES: Record<Role, PermissionCode[]> = {
@@ -675,6 +725,14 @@ export const DEFAULT_ROLE_PERMISSION_CODES: Record<Role, PermissionCode[]> = {
     PERMISSIONS.INTEGRATIONS_WHATSAPP_TEMPLATE_SEND,
     PERMISSIONS.INTEGRATIONS_WHATSAPP_SESSIONS_READ,
     PERMISSIONS.INTEGRATIONS_WHATSAPP_MESSAGES_READ,
+    PERMISSIONS.DASHBOARD_TEAM_LEAD_READ,
+    PERMISSIONS.DASHBOARD_USER_PERFORMANCE_READ,
+    PERMISSIONS.DASHBOARD_PROJECT_READ,
+    PERMISSIONS.REVIEW_CYCLES_CREATE,
+    PERMISSIONS.REVIEW_CYCLES_READ,
+    PERMISSIONS.REVIEWS_CREATE,
+    PERMISSIONS.REVIEWS_READ,
+    PERMISSIONS.REVIEWS_SUBMIT,
     PERMISSIONS.AI_CHAT,
     PERMISSIONS.AI_TOOLS_READ,
     PERMISSIONS.AI_MESSAGES_READ,
@@ -719,6 +777,10 @@ export const DEFAULT_ROLE_PERMISSION_CODES: Record<Role, PermissionCode[]> = {
     PERMISSIONS.EXPENSES_READ,
     PERMISSIONS.NOTIFICATIONS_READ,
     PERMISSIONS.NOTIFICATIONS_MARK_READ,
+    PERMISSIONS.DASHBOARD_USER_PERFORMANCE_READ,
+    PERMISSIONS.DASHBOARD_PROJECT_READ,
+    PERMISSIONS.REVIEW_CYCLES_READ,
+    PERMISSIONS.REVIEWS_READ,
     PERMISSIONS.AI_CHAT,
     PERMISSIONS.AI_TOOLS_READ,
     PERMISSIONS.AI_MESSAGES_READ,

@@ -95,7 +95,7 @@ export class TasksService {
           },
         });
 
-        return tx.task.create({
+        const createdTask = await tx.task.create({
           data: {
             tenantId,
             projectId: dto.projectId,
@@ -130,6 +130,20 @@ export class TasksService {
             },
           },
         });
+
+        await tx.taskStatusTransition.create({
+          data: {
+            tenantId,
+            projectId: dto.projectId,
+            taskId: createdTask.id,
+            fromStatusId: null,
+            toStatusId: createdTask.taskStatusId,
+            enteredAt: createdTask.createdAt,
+            changedBy: actor.sub,
+          },
+        });
+
+        return createdTask;
       });
 
       await this.auditService.log({
@@ -368,59 +382,79 @@ export class TasksService {
       }
     }
 
+    const isStatusChange =
+      dto.statusId !== undefined && dto.statusId !== existingTask.taskStatusId;
     const reopenedIncrement =
-      dto.statusId && existingTask.status.isDone && !status.isDone ? 1 : 0;
+      isStatusChange && existingTask.status.isDone && !status.isDone ? 1 : 0;
 
-    const updated = await this.prisma.task.update({
-      where: { id: existingTask.id },
-      data: {
-        title: dto.title,
-        description: dto.description,
-        taskStatusId: dto.statusId,
-        assigneeId:
-          dto.assigneeId === null
-            ? null
-            : dto.assigneeId !== undefined
-              ? assignee?.id
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const updatedTask = await tx.task.update({
+        where: { id: existingTask.id },
+        data: {
+          title: dto.title,
+          description: dto.description,
+          taskStatusId: dto.statusId,
+          assigneeId:
+            dto.assigneeId === null
+              ? null
+              : dto.assigneeId !== undefined
+                ? assignee?.id
+                : undefined,
+          estimateHours:
+            dto.estimateHours !== undefined
+              ? new Prisma.Decimal(dto.estimateHours)
               : undefined,
-        estimateHours:
-          dto.estimateHours !== undefined
-            ? new Prisma.Decimal(dto.estimateHours)
-            : undefined,
-        priority: dto.priority,
-        dueDate: dto.dueDate,
-        tags: dto.tags as Prisma.InputJsonValue | undefined,
-        milestoneId:
-          dto.milestoneId === null
-            ? null
-            : dto.milestoneId !== undefined
-              ? milestone?.id
+          priority: dto.priority,
+          dueDate: dto.dueDate,
+          tags: dto.tags as Prisma.InputJsonValue | undefined,
+          milestoneId:
+            dto.milestoneId === null
+              ? null
+              : dto.milestoneId !== undefined
+                ? milestone?.id
+                : undefined,
+          parentTaskId:
+            dto.parentTaskId === null
+              ? null
+              : dto.parentTaskId !== undefined
+                ? parentTask?.id
+                : undefined,
+          externalReferences:
+            dto.externalReferences as Prisma.InputJsonValue | undefined,
+          reopenedCount:
+            reopenedIncrement > 0
+              ? {
+                  increment: reopenedIncrement,
+                }
               : undefined,
-        parentTaskId:
-          dto.parentTaskId === null
-            ? null
-            : dto.parentTaskId !== undefined
-              ? parentTask?.id
-              : undefined,
-        externalReferences:
-          dto.externalReferences as Prisma.InputJsonValue | undefined,
-        reopenedCount:
-          reopenedIncrement > 0
-            ? {
-                increment: reopenedIncrement,
-              }
-            : undefined,
-        updatedBy: actor.sub,
-      },
-      include: {
-        status: true,
-        assignee: {
-          select: {
-            id: true,
-            name: true,
+          updatedBy: actor.sub,
+        },
+        include: {
+          status: true,
+          assignee: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-      },
+      });
+
+      if (isStatusChange && dto.statusId) {
+        await tx.taskStatusTransition.create({
+          data: {
+            tenantId,
+            projectId: existingTask.projectId,
+            taskId: existingTask.id,
+            fromStatusId: existingTask.taskStatusId,
+            toStatusId: dto.statusId,
+            enteredAt: new Date(),
+            changedBy: actor.sub,
+          },
+        });
+      }
+
+      return updatedTask;
     });
 
     await this.auditService.log({
@@ -522,23 +556,43 @@ export class TasksService {
       }
     }
 
-    const reopenedIncrement = existingTask.status.isDone && !targetStatus.isDone ? 1 : 0;
+    const isStatusChange = targetStatus.id !== existingTask.taskStatusId;
+    const reopenedIncrement =
+      isStatusChange && existingTask.status.isDone && !targetStatus.isDone ? 1 : 0;
 
-    const updated = await this.prisma.task.update({
-      where: { id: existingTask.id },
-      data: {
-        taskStatusId: targetStatus.id,
-        reopenedCount:
-          reopenedIncrement > 0
-            ? {
-                increment: reopenedIncrement,
-              }
-            : undefined,
-        updatedBy: actor.sub,
-      },
-      include: {
-        status: true,
-      },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const updatedTask = await tx.task.update({
+        where: { id: existingTask.id },
+        data: {
+          taskStatusId: targetStatus.id,
+          reopenedCount:
+            reopenedIncrement > 0
+              ? {
+                  increment: reopenedIncrement,
+                }
+              : undefined,
+          updatedBy: actor.sub,
+        },
+        include: {
+          status: true,
+        },
+      });
+
+      if (isStatusChange) {
+        await tx.taskStatusTransition.create({
+          data: {
+            tenantId,
+            projectId: existingTask.projectId,
+            taskId: existingTask.id,
+            fromStatusId: existingTask.taskStatusId,
+            toStatusId: targetStatus.id,
+            enteredAt: new Date(),
+            changedBy: actor.sub,
+          },
+        });
+      }
+
+      return updatedTask;
     });
 
     await this.auditService.log({
@@ -693,6 +747,8 @@ export class TasksService {
 
     await this.prisma.$transaction(async (tx) => {
       for (const task of tasks) {
+        const isStatusChange =
+          targetStatus !== undefined && task.taskStatusId !== targetStatus.id;
         let reopenedIncrement = 0;
 
         if (targetStatus) {
@@ -702,7 +758,8 @@ export class TasksService {
             task.taskStatusId,
             targetStatus.id,
           );
-          reopenedIncrement = task.status.isDone && !targetStatus.isDone ? 1 : 0;
+          reopenedIncrement =
+            isStatusChange && task.status.isDone && !targetStatus.isDone ? 1 : 0;
         }
 
         const shiftedDueDate =
@@ -725,6 +782,20 @@ export class TasksService {
             updatedBy: actor.sub,
           },
         });
+
+        if (isStatusChange && targetStatus) {
+          await tx.taskStatusTransition.create({
+            data: {
+              tenantId,
+              projectId: task.projectId,
+              taskId: task.id,
+              fromStatusId: task.taskStatusId,
+              toStatusId: targetStatus.id,
+              enteredAt: new Date(),
+              changedBy: actor.sub,
+            },
+          });
+        }
       }
     });
 

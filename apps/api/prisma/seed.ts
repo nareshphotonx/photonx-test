@@ -389,6 +389,8 @@ async function seed(): Promise<void> {
       status: ProjectStatus.ACTIVE,
       budgetAmount: new Prisma.Decimal(150000),
       budgetCurrency: 'INR',
+      billableAmount: new Prisma.Decimal(220000),
+      billableCurrency: 'INR',
       overheadPercent: new Prisma.Decimal(12.5),
       createdBy: superAdmin.id,
       updatedBy: superAdmin.id,
@@ -401,6 +403,8 @@ async function seed(): Promise<void> {
       status: ProjectStatus.ACTIVE,
       budgetAmount: new Prisma.Decimal(150000),
       budgetCurrency: 'INR',
+      billableAmount: new Prisma.Decimal(220000),
+      billableCurrency: 'INR',
       overheadPercent: new Prisma.Decimal(12.5),
       updatedBy: superAdmin.id,
     },
@@ -764,6 +768,47 @@ async function seed(): Promise<void> {
       updatedBy: superAdmin.id,
       deletedAt: null,
     },
+  });
+
+  await prisma.taskStatusTransition.deleteMany({
+    where: {
+      tenantId: tenant.id,
+      taskId: {
+        in: [task1.id, task2.id, task3.id],
+      },
+    },
+  });
+
+  await prisma.taskStatusTransition.createMany({
+    data: [
+      {
+        tenantId: tenant.id,
+        projectId: project.id,
+        taskId: task1.id,
+        fromStatusId: null,
+        toStatusId: task1.taskStatusId,
+        enteredAt: task1.createdAt,
+        changedBy: superAdmin.id,
+      },
+      {
+        tenantId: tenant.id,
+        projectId: project.id,
+        taskId: task2.id,
+        fromStatusId: null,
+        toStatusId: task2.taskStatusId,
+        enteredAt: task2.createdAt,
+        changedBy: superAdmin.id,
+      },
+      {
+        tenantId: tenant.id,
+        projectId: project.id,
+        taskId: task3.id,
+        fromStatusId: null,
+        toStatusId: task3.taskStatusId,
+        enteredAt: task3.createdAt,
+        changedBy: superAdmin.id,
+      },
+    ],
   });
 
   await prisma.project.update({
@@ -1158,6 +1203,68 @@ async function seed(): Promise<void> {
       },
     });
   }
+
+  const reviewCycle = await prisma.reviewCycle.upsert({
+    where: {
+      tenantId_year_month: {
+        tenantId: tenant.id,
+        year: 2026,
+        month: 5,
+      },
+    },
+    create: {
+      tenantId: tenant.id,
+      year: 2026,
+      month: 5,
+      title: 'May 2026 Performance Review',
+      status: 'OPEN',
+      startDate: new Date('2026-05-01T00:00:00.000Z'),
+      endDate: new Date('2026-05-31T23:59:59.000Z'),
+      notes: 'Seeded monthly review cycle',
+      createdById: superAdmin.id,
+    },
+    update: {
+      title: 'May 2026 Performance Review',
+      status: 'OPEN',
+      startDate: new Date('2026-05-01T00:00:00.000Z'),
+      endDate: new Date('2026-05-31T23:59:59.000Z'),
+      notes: 'Seeded monthly review cycle',
+      createdById: superAdmin.id,
+    },
+  });
+
+  await prisma.reviewEntry.upsert({
+    where: {
+      tenantId_cycleId_reviewedUserId_reviewerId: {
+        tenantId: tenant.id,
+        cycleId: reviewCycle.id,
+        reviewedUserId: normalUser.id,
+        reviewerId: teamLead.id,
+      },
+    },
+    create: {
+      tenantId: tenant.id,
+      cycleId: reviewCycle.id,
+      reviewedUserId: normalUser.id,
+      reviewerId: teamLead.id,
+      overallRating: 4,
+      strengths: 'Consistent execution and ownership on core tasks.',
+      improvements: 'Can improve up-front estimation for dependencies.',
+      summary: 'Strong delivery throughout the cycle.',
+      status: 'SUBMITTED',
+      submittedAt: new Date('2026-05-31T18:00:00.000Z'),
+    },
+    update: {
+      overallRating: 4,
+      strengths: 'Consistent execution and ownership on core tasks.',
+      improvements: 'Can improve up-front estimation for dependencies.',
+      summary: 'Strong delivery throughout the cycle.',
+      status: 'SUBMITTED',
+      submittedAt: new Date('2026-05-31T18:00:00.000Z'),
+      approvedAt: null,
+      approvedById: null,
+    },
+  });
 
   const integrationSeeds: Array<{
     type: IntegrationType;

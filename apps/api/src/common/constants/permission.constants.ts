@@ -134,6 +134,18 @@ export const PERMISSIONS = {
   INTEGRATIONS_WHATSAPP_SESSIONS_READ: 'integrations:whatsapp:sessions:read',
   INTEGRATIONS_WHATSAPP_MESSAGES_READ: 'integrations:whatsapp:messages:read',
 
+  DASHBOARD_SUPER_ADMIN_READ: 'dashboard:super_admin:read',
+  DASHBOARD_TEAM_LEAD_READ: 'dashboard:team_lead:read',
+  DASHBOARD_USER_PERFORMANCE_READ: 'dashboard:user_performance:read',
+  DASHBOARD_PROJECT_READ: 'dashboard:project:read',
+
+  REVIEW_CYCLES_CREATE: 'review_cycles:create',
+  REVIEW_CYCLES_READ: 'review_cycles:read',
+  REVIEWS_CREATE: 'reviews:create',
+  REVIEWS_READ: 'reviews:read',
+  REVIEWS_SUBMIT: 'reviews:submit',
+  REVIEWS_APPROVE: 'reviews:approve',
+
   AI_CHAT: 'ai:chat',
   AI_TOOLS_READ: 'ai:tools:read',
   AI_MESSAGES_READ: 'ai:messages:read',

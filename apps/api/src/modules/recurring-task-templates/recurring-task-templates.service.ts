@@ -115,7 +115,7 @@ export class RecurringTaskTemplatesService {
           },
         });
 
-        await tx.task.create({
+        const createdTask = await tx.task.create({
           data: {
             tenantId: template.tenantId,
             projectId: template.projectId,
@@ -133,6 +133,18 @@ export class RecurringTaskTemplatesService {
               template.externalReferences as Prisma.InputJsonValue | undefined,
             createdBy: template.createdBy,
             updatedBy: template.createdBy,
+          },
+        });
+
+        await tx.taskStatusTransition.create({
+          data: {
+            tenantId: template.tenantId,
+            projectId: template.projectId,
+            taskId: createdTask.id,
+            fromStatusId: null,
+            toStatusId: createdTask.taskStatusId,
+            enteredAt: createdTask.createdAt,
+            changedBy: template.createdBy,
           },
         });
 
