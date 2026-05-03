@@ -6,6 +6,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../common/constants/permission.constants';
@@ -47,6 +48,13 @@ export class ReviewEntriesController {
   @Get()
   @RequirePermissions(PERMISSIONS.REVIEWS_READ)
   @ApiOperation({ summary: 'List review entries' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'cycleId', required: false, example: 'cuid_review_cycle_1' })
+  @ApiQuery({ name: 'reviewedUserId', required: false, example: 'cuid_user_1' })
+  @ApiQuery({ name: 'reviewerId', required: false, example: 'cuid_lead_1' })
+  @ApiQuery({ name: 'status', required: false, example: 'SUBMITTED' })
+  @ApiQuery({ name: 'search', required: false, example: 'performance' })
   @ApiOkResponse({
     description: 'Review entry list',
     example: {
@@ -78,6 +86,13 @@ export class ReviewEntriesController {
   @RequirePermissions(PERMISSIONS.REVIEWS_SUBMIT)
   @ApiOperation({ summary: 'Submit draft review entry' })
   @ApiParam({ name: 'id', example: 'cuid_review_entry_1' })
+  @ApiBody({
+    required: false,
+    schema: {
+      type: 'object',
+      properties: {},
+    },
+  })
   @ApiOkResponse({
     description: 'Review entry submitted',
     example: {
@@ -98,6 +113,13 @@ export class ReviewEntriesController {
   @RequirePermissions(PERMISSIONS.REVIEWS_APPROVE)
   @ApiOperation({ summary: 'Approve submitted review entry' })
   @ApiParam({ name: 'id', example: 'cuid_review_entry_1' })
+  @ApiBody({
+    required: false,
+    schema: {
+      type: 'object',
+      properties: {},
+    },
+  })
   @ApiOkResponse({
     description: 'Review entry approved',
     example: {

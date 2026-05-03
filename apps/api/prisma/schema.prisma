@@ -241,6 +241,18 @@ enum ReviewEntryStatus {
   APPROVED
 }
 
+enum ComplianceRequestType {
+  DATA_EXPORT
+  DATA_ERASURE
+}
+
+enum ComplianceRequestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
 model Tenant {
   id                      String                   @id @default(cuid())
   name                    String
@@ -314,6 +326,7 @@ model Tenant {
   taskStatusTransitions   TaskStatusTransition[]
   reviewCycles            ReviewCycle[]
   reviewEntries           ReviewEntry[]
+  complianceRequests      ComplianceRequest[]
 
   @@index([isActive])
 }
@@ -390,6 +403,8 @@ model User {
   reviewedEntries         ReviewEntry[]            @relation("ReviewReviewedUser")
   createdReviewEntries    ReviewEntry[]            @relation("ReviewReviewer")
   approvedReviewEntries   ReviewEntry[]            @relation("ReviewApprover")
+  requestedComplianceRequests ComplianceRequest[]  @relation("ComplianceRequestRequester")
+  targetComplianceRequests ComplianceRequest[]     @relation("ComplianceRequestTarget")
 
   @@unique([tenantId, email])
   @@unique([tenantId, phone])
@@ -1785,6 +1800,9 @@ model AuditLog {
   action     String
   entityType String?
   entityId   String?
+  requestId  String?
+  ipAddress  String?
+  userAgent  String?
   metadata   Json?
   createdAt  DateTime @default(now())
 
@@ -1792,4 +1810,32 @@ model AuditLog {
   @@index([actorId])
   @@index([action])
   @@index([createdAt])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, action, createdAt])
+  @@index([tenantId, actorId, createdAt])
+  @@index([tenantId, entityType, entityId, createdAt])
+}
+
+model ComplianceRequest {
+  id               String                  @id @default(cuid())
+  tenantId         String
+  requestedById    String
+  targetUserId     String
+  type             ComplianceRequestType
+  status           ComplianceRequestStatus @default(PENDING)
+  reason           String?                 @db.Text
+  requestMeta      Json?
+  resultMeta       Json?
+  encryptedPayload String?                 @db.LongText
+  failureReason    String?                 @db.Text
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  processedAt      DateTime?
+  tenant           Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requestedBy      User                    @relation("ComplianceRequestRequester", fields: [requestedById], references: [id], onDelete: Cascade)
+  targetUser       User                    @relation("ComplianceRequestTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, requestedById, createdAt])
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, type, createdAt])
 }

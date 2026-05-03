@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Patch } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -30,6 +31,7 @@ export class NotificationPreferencesController {
   @Patch('me')
   @RequirePermissions(PERMISSIONS.NOTIFICATION_SELF_UPDATE)
   @ApiOperation({ summary: 'Update current user notification preferences' })
+  @ApiBody({ type: UpdateNotificationPreferencesDto })
   @ApiOkResponse({ description: 'Notification preferences updated' })
   updateMine(
     @CurrentUser() user: Express.User,

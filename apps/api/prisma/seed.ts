@@ -21,7 +21,7 @@ import { Role } from '../src/common/enums/role.enum';
 const prisma = new PrismaClient();
 
 function encryptSecrets(payload: Record<string, string>): string {
-  const source = process.env.APP_ENCRYPTION_KEY ?? 'photonx-dev-encryption-key';
+  const source = requireSeedEnv('APP_ENCRYPTION_KEY');
   const key = createHash('sha256').update(source).digest();
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', key, iv);
@@ -31,6 +31,16 @@ function encryptSecrets(payload: Record<string, string>): string {
   ]);
   const tag = cipher.getAuthTag();
   return `${iv.toString('base64')}:${tag.toString('base64')}:${encrypted.toString('base64')}`;
+}
+
+function requireSeedEnv(key: string): string {
+  const value = process.env[key];
+
+  if (!value || value.trim().length === 0) {
+    throw new Error(`Missing required seed environment variable: ${key}`);
+  }
+
+  return value.trim();
 }
 
 async function seedTenantRbac(tenantId: string): Promise<void> {
@@ -230,9 +240,9 @@ async function seed(): Promise<void> {
   }
 
   const [adminPassword, leadPassword, userPassword] = await Promise.all([
-    hashPassword('Admin@12345'),
-    hashPassword('TeamLead@12345'),
-    hashPassword('User@12345'),
+    hashPassword(requireSeedEnv('SEED_SUPER_ADMIN_PASSWORD')),
+    hashPassword(requireSeedEnv('SEED_TEAM_LEAD_PASSWORD')),
+    hashPassword(requireSeedEnv('SEED_USER_PASSWORD')),
   ]);
 
   const superAdmin = await prisma.user.upsert({
@@ -1266,6 +1276,71 @@ async function seed(): Promise<void> {
     },
   });
 
+  const existingComplianceRequest = await prisma.complianceRequest.findFirst({
+    where: {
+      tenantId: tenant.id,
+      targetUserId: normalUser.id,
+      type: 'DATA_EXPORT',
+    },
+    select: { id: true },
+  });
+
+  const complianceRequest =
+    existingComplianceRequest ??
+    (await prisma.complianceRequest.create({
+      data: {
+        tenantId: tenant.id,
+        requestedById: normalUser.id,
+        targetUserId: normalUser.id,
+        type: 'DATA_EXPORT',
+        status: 'COMPLETED',
+        reason: 'Seeded compliance export request',
+        requestMeta: {
+          format: 'json',
+        },
+        resultMeta: {
+          payloadSize: 256,
+          retentionDays: 7,
+        },
+        encryptedPayload: encryptSecrets({
+          payload: JSON.stringify({
+            seeded: true,
+            userId: normalUser.id,
+          }),
+        }),
+        processedAt: new Date('2026-05-02T12:00:00.000Z'),
+      },
+      select: { id: true },
+    }));
+
+  const existingComplianceAudit = await prisma.auditLog.findFirst({
+    where: {
+      tenantId: tenant.id,
+      action: 'COMPLIANCE_EXPORT_REQUEST_CREATE',
+      entityType: 'ComplianceRequest',
+      entityId: complianceRequest.id,
+    },
+    select: { id: true },
+  });
+
+  if (!existingComplianceAudit) {
+    await prisma.auditLog.create({
+      data: {
+        tenantId: tenant.id,
+        actorId: normalUser.id,
+        action: 'COMPLIANCE_EXPORT_REQUEST_CREATE',
+        entityType: 'ComplianceRequest',
+        entityId: complianceRequest.id,
+        requestId: 'seed-request-id',
+        ipAddress: '127.0.0.1',
+        userAgent: 'seed-script',
+        metadata: {
+          seeded: true,
+        },
+      },
+    });
+  }
+
   const integrationSeeds: Array<{
     type: IntegrationType;
     enabled: boolean;
@@ -1282,9 +1357,9 @@ async function seed(): Promise<void> {
         utilityTemplateName: 'utility_notification',
       },
       secrets: {
-        verifyToken: 'photonx-whatsapp-verify-token',
-        appSecret: 'photonx-whatsapp-app-secret',
-        accessToken: 'photonx-whatsapp-access-token',
+        verifyToken: requireSeedEnv('SEED_WHATSAPP_VERIFY_TOKEN'),
+        appSecret: requireSeedEnv('SEED_WHATSAPP_APP_SECRET'),
+        accessToken: requireSeedEnv('SEED_WHATSAPP_ACCESS_TOKEN'),
       },
     },
     {
@@ -1295,7 +1370,7 @@ async function seed(): Promise<void> {
         botUsernames: ['dependabot[bot]', 'github-actions[bot]'],
       },
       secrets: {
-        webhookSecret: 'photonx-github-webhook-secret',
+        webhookSecret: requireSeedEnv('SEED_GITHUB_WEBHOOK_SECRET'),
       },
     },
     {
@@ -1305,7 +1380,7 @@ async function seed(): Promise<void> {
         defaultChannel: '#engineering-alerts',
       },
       secrets: {
-        webhookUrl: 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX',
+        webhookUrl: requireSeedEnv('SEED_SLACK_WEBHOOK_URL'),
       },
     },
     {
@@ -1318,8 +1393,8 @@ async function seed(): Promise<void> {
         fromEmail: 'alerts@photonx.dev',
       },
       secrets: {
-        smtpUser: 'photonx-smtp-user',
-        smtpPassword: 'photonx-smtp-password',
+        smtpUser: requireSeedEnv('SEED_SMTP_USER'),
+        smtpPassword: requireSeedEnv('SEED_SMTP_PASSWORD'),
       },
     },
   ];

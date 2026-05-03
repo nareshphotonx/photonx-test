@@ -6,6 +6,7 @@ import {
   ApiHeader,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../../common/constants/permission.constants';
@@ -49,6 +50,8 @@ export class WhatsappController {
   @Get('sessions')
   @RequirePermissions(PERMISSIONS.INTEGRATIONS_WHATSAPP_SESSIONS_READ)
   @ApiOperation({ summary: 'List WhatsApp sessions' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
   @ApiOkResponse({ description: 'WhatsApp session list' })
   listSessions(@CurrentUser() user: Express.User, @Query() query: ListWhatsappSessionsDto) {
     return this.whatsappService.listSessions(user.tenantId, query);
@@ -58,6 +61,8 @@ export class WhatsappController {
   @Get('messages')
   @RequirePermissions(PERMISSIONS.INTEGRATIONS_WHATSAPP_MESSAGES_READ)
   @ApiOperation({ summary: 'List WhatsApp messages' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
   @ApiOkResponse({ description: 'WhatsApp message list' })
   listMessages(@CurrentUser() user: Express.User, @Query() query: ListWhatsappSessionsDto) {
     return this.whatsappService.listMessages(user.tenantId, query);

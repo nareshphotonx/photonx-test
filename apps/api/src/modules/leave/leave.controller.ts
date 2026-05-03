@@ -6,6 +6,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../common/constants/permission.constants';
@@ -54,6 +55,7 @@ export class LeaveController {
   @Get('leave/balance/me')
   @RequirePermissions(PERMISSIONS.LEAVE_BALANCE_ME_READ)
   @ApiOperation({ summary: 'Get leave balance for current user' })
+  @ApiQuery({ name: 'year', required: false, example: 2026 })
   @ApiOkResponse({ description: 'Current user leave balance' })
   getMyBalance(@CurrentUser() user: Express.User, @Query() query: LeaveBalanceDto) {
     return this.leaveService.getMyBalance(user.tenantId, user, query);
@@ -63,6 +65,7 @@ export class LeaveController {
   @RequirePermissions(PERMISSIONS.LEAVE_BALANCE_USER_READ)
   @ApiOperation({ summary: 'Get leave balance by user id' })
   @ApiParam({ name: 'userId', example: 'cuid_user_1' })
+  @ApiQuery({ name: 'year', required: false, example: 2026 })
   @ApiOkResponse({ description: 'User leave balance' })
   getUserBalance(
     @CurrentUser() user: Express.User,
@@ -87,6 +90,12 @@ export class LeaveController {
   @Get('leave/requests')
   @RequirePermissions(PERMISSIONS.LEAVE_REQUESTS_READ)
   @ApiOperation({ summary: 'List leave requests' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'status', required: false, enum: ['PENDING', 'APPROVED', 'REJECTED'] })
+  @ApiQuery({ name: 'userId', required: false, example: 'cuid_user_1' })
+  @ApiQuery({ name: 'from', required: false, example: '2026-07-01T00:00:00.000Z' })
+  @ApiQuery({ name: 'to', required: false, example: '2026-07-31T00:00:00.000Z' })
   @ApiOkResponse({ description: 'Leave request list' })
   listLeaveRequests(
     @CurrentUser() user: Express.User,

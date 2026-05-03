@@ -6,6 +6,7 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { Public } from '../auth/decorators/public.decorator';
 import { GithubIntegrationsService } from '../integrations/github/github-integrations.service';
@@ -21,6 +22,13 @@ export class WebhooksController {
 
   @Public()
   @Get('whatsapp')
+  @SkipThrottle({ default: true })
+  @Throttle({
+    webhooks: {
+      limit: Number(process.env.THROTTLE_WEBHOOK_LIMIT ?? '300'),
+      ttl: Number(process.env.THROTTLE_WEBHOOK_TTL_MS ?? '60000'),
+    },
+  })
   @ApiOperation({ summary: 'Meta WhatsApp webhook verification endpoint' })
   @ApiQuery({ name: 'hub.mode', required: false })
   @ApiQuery({ name: 'hub.verify_token', required: false })
@@ -36,6 +44,13 @@ export class WebhooksController {
 
   @Public()
   @Post('whatsapp')
+  @SkipThrottle({ default: true })
+  @Throttle({
+    webhooks: {
+      limit: Number(process.env.THROTTLE_WEBHOOK_LIMIT ?? '300'),
+      ttl: Number(process.env.THROTTLE_WEBHOOK_TTL_MS ?? '60000'),
+    },
+  })
   @ApiOperation({ summary: 'Inbound WhatsApp webhook handler' })
   @ApiBody({ type: Object })
   @ApiOkResponse({ description: 'Webhook processed' })
@@ -45,6 +60,13 @@ export class WebhooksController {
 
   @Public()
   @Post('github')
+  @SkipThrottle({ default: true })
+  @Throttle({
+    webhooks: {
+      limit: Number(process.env.THROTTLE_WEBHOOK_LIMIT ?? '300'),
+      ttl: Number(process.env.THROTTLE_WEBHOOK_TTL_MS ?? '60000'),
+    },
+  })
   @ApiOperation({ summary: 'Inbound GitHub webhook handler' })
   @ApiBody({ type: Object })
   @ApiOkResponse({ description: 'Webhook processed or deduplicated' })

@@ -15,6 +15,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../common/constants/permission.constants';
@@ -43,6 +44,7 @@ export class TaskStatusesController {
   @Get()
   @RequirePermissions(PERMISSIONS.TASK_STATUSES_READ)
   @ApiOperation({ summary: 'List task statuses for project' })
+  @ApiQuery({ name: 'projectId', required: true, example: 'cuid_project_1' })
   @ApiOkResponse({ description: 'Task status list' })
   listStatuses(
     @CurrentUser() user: Express.User,
@@ -55,6 +57,7 @@ export class TaskStatusesController {
   @RequirePermissions(PERMISSIONS.TASK_STATUSES_UPDATE)
   @ApiOperation({ summary: 'Update task status' })
   @ApiParam({ name: 'id', example: 'cuid_status_1' })
+  @ApiBody({ type: UpdateTaskStatusDto })
   @ApiOkResponse({ description: 'Task status updated' })
   updateStatus(
     @CurrentUser() user: Express.User,

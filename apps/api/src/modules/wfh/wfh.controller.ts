@@ -6,6 +6,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../common/constants/permission.constants';
@@ -36,6 +37,7 @@ export class WfhController {
   @Get('balance/me')
   @RequirePermissions(PERMISSIONS.WFH_BALANCE_ME_READ)
   @ApiOperation({ summary: 'Get WFH balance for current user' })
+  @ApiQuery({ name: 'year', required: false, example: 2026 })
   @ApiOkResponse({ description: 'Current user WFH balance' })
   getMyBalance(@CurrentUser() user: Express.User, @Query() query: WfhBalanceDto) {
     return this.wfhService.getMyBalance(user.tenantId, user, query);
@@ -45,6 +47,7 @@ export class WfhController {
   @RequirePermissions(PERMISSIONS.WFH_BALANCE_USER_READ)
   @ApiOperation({ summary: 'Get WFH balance by user id' })
   @ApiParam({ name: 'userId', example: 'cuid_user_1' })
+  @ApiQuery({ name: 'year', required: false, example: 2026 })
   @ApiOkResponse({ description: 'User WFH balance' })
   getUserBalance(
     @CurrentUser() user: Express.User,
@@ -69,6 +72,12 @@ export class WfhController {
   @Get('requests')
   @RequirePermissions(PERMISSIONS.WFH_REQUESTS_READ)
   @ApiOperation({ summary: 'List WFH requests' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'status', required: false, enum: ['PENDING', 'APPROVED', 'REJECTED'] })
+  @ApiQuery({ name: 'userId', required: false, example: 'cuid_user_1' })
+  @ApiQuery({ name: 'from', required: false, example: '2026-07-01T00:00:00.000Z' })
+  @ApiQuery({ name: 'to', required: false, example: '2026-07-31T00:00:00.000Z' })
   @ApiOkResponse({ description: 'WFH request list' })
   listRequests(
     @CurrentUser() user: Express.User,

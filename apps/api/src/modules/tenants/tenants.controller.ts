@@ -73,6 +73,7 @@ export class TenantsController {
   @ApiBearerAuth()
   @RequirePermissions(PERMISSIONS.TENANT_SETTINGS_UPDATE)
   @ApiOperation({ summary: 'Update current tenant settings' })
+  @ApiBody({ type: UpdateTenantSettingsDto })
   @ApiOkResponse({ description: 'Tenant settings updated' })
   updateCurrentSettings(
     @CurrentUser() user: Express.User,

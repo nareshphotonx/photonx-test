@@ -6,6 +6,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../common/constants/permission.constants';
@@ -34,6 +35,11 @@ export class DocumentsController {
   @Get()
   @RequirePermissions(PERMISSIONS.DOCUMENTS_READ)
   @ApiOperation({ summary: 'List tenant documents' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'search', required: false, example: 'policy' })
+  @ApiQuery({ name: 'documentType', required: false, example: 'POLICY' })
+  @ApiQuery({ name: 'includeDeleted', required: false, example: false })
   @ApiOkResponse({ description: 'Document list' })
   listDocuments(@CurrentUser() user: Express.User, @Query() query: ListDocumentsDto) {
     return this.documentsService.listDocuments(user.tenantId, query);

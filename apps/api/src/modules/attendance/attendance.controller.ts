@@ -6,6 +6,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { Request } from 'express';
@@ -63,6 +64,10 @@ export class AttendanceController {
   @Get('report')
   @RequirePermissions(PERMISSIONS.ATTENDANCE_REPORT_READ)
   @ApiOperation({ summary: 'Get attendance report by filters' })
+  @ApiQuery({ name: 'from', required: false, example: '2026-06-01T00:00:00.000Z' })
+  @ApiQuery({ name: 'to', required: false, example: '2026-06-30T23:59:59.000Z' })
+  @ApiQuery({ name: 'userId', required: false, example: 'cuid_user_1' })
+  @ApiQuery({ name: 'teamId', required: false, example: 'cuid_team_1' })
   @ApiOkResponse({ description: 'Attendance report list' })
   getReport(@CurrentUser() user: Express.User, @Query() query: AttendanceReportDto) {
     return this.attendanceService.getReport(user.tenantId, user, query);
@@ -83,6 +88,10 @@ export class AttendanceController {
   @Get('regularization')
   @RequirePermissions(PERMISSIONS.ATTENDANCE_REGULARIZATION_READ)
   @ApiOperation({ summary: 'List attendance regularization requests' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'status', required: false, enum: ['PENDING', 'APPROVED', 'REJECTED'] })
+  @ApiQuery({ name: 'userId', required: false, example: 'cuid_user_1' })
   @ApiOkResponse({ description: 'Regularization request list' })
   listRegularization(
     @CurrentUser() user: Express.User,

@@ -6,6 +6,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../../common/constants/permission.constants';
@@ -42,6 +43,8 @@ export class GithubIntegrationsController {
   @Get('unmatched-commits')
   @RequirePermissions(PERMISSIONS.INTEGRATIONS_GITHUB_UNMATCHED_READ)
   @ApiOperation({ summary: 'List unmatched GitHub commits' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
   @ApiOkResponse({ description: 'Unmatched commit list' })
   listUnmatched(@CurrentUser() user: Express.User, @Query() query: ListGithubUnmatchedCommitsDto) {
     return this.githubService.listUnmatchedCommits(user.tenantId, query);
@@ -64,6 +67,8 @@ export class GithubIntegrationsController {
   @Get('events')
   @RequirePermissions(PERMISSIONS.INTEGRATIONS_GITHUB_EVENTS_READ)
   @ApiOperation({ summary: 'List GitHub webhook events' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
   @ApiOkResponse({ description: 'GitHub webhook event list' })
   listEvents(@CurrentUser() user: Express.User, @Query() query: ListGithubUnmatchedCommitsDto) {
     return this.githubService.listWebhookEvents(user.tenantId, query);

@@ -6,6 +6,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { type Request } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
@@ -21,6 +22,13 @@ export class AuthController {
 
   @Public()
   @Post('login')
+  @SkipThrottle({ default: true })
+  @Throttle({
+    auth: {
+      limit: Number(process.env.THROTTLE_AUTH_LIMIT ?? '20'),
+      ttl: Number(process.env.THROTTLE_AUTH_TTL_MS ?? '60000'),
+    },
+  })
   @HttpCode(200)
   @ApiOperation({ summary: 'Login with tenant slug and identifier' })
   @ApiBody({
@@ -57,8 +65,25 @@ export class AuthController {
 
   @Public()
   @Post('refresh')
+  @SkipThrottle({ default: true })
+  @Throttle({
+    auth: {
+      limit: Number(process.env.THROTTLE_AUTH_LIMIT ?? '20'),
+      ttl: Number(process.env.THROTTLE_AUTH_TTL_MS ?? '60000'),
+    },
+  })
   @HttpCode(200)
   @ApiOperation({ summary: 'Refresh access token using refresh token' })
+  @ApiBody({
+    type: RefreshDto,
+    examples: {
+      default: {
+        value: {
+          refreshToken: 'sample_refresh_token',
+        },
+      },
+    },
+  })
   @ApiOkResponse({ description: 'Returns rotated token pair' })
   refresh(
     @Body() dto: RefreshDto,
@@ -76,6 +101,16 @@ export class AuthController {
   @HttpCode(200)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout current authenticated session' })
+  @ApiBody({
+    type: LogoutDto,
+    examples: {
+      default: {
+        value: {
+          refreshToken: 'sample_refresh_token',
+        },
+      },
+    },
+  })
   @ApiOkResponse({ description: 'Session revoked' })
   logout(
     @Body() dto: LogoutDto,

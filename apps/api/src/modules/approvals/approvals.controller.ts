@@ -5,6 +5,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../common/constants/permission.constants';
@@ -23,6 +24,8 @@ export class ApprovalsController {
   @Get('pending')
   @RequirePermissions(PERMISSIONS.APPROVALS_PENDING_READ)
   @ApiOperation({ summary: 'List pending approvals for current user scope' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
   @ApiOkResponse({ description: 'Pending approval requests' })
   listPending(@CurrentUser() user: Express.User, @Query() query: ListApprovalsDto) {
     return this.approvalsService.listPending(user.tenantId, user, query);
@@ -31,6 +34,8 @@ export class ApprovalsController {
   @Get('history')
   @RequirePermissions(PERMISSIONS.APPROVALS_HISTORY_READ)
   @ApiOperation({ summary: 'List approval history' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
   @ApiOkResponse({ description: 'Approval history entries' })
   listHistory(@CurrentUser() user: Express.User, @Query() query: ListApprovalsDto) {
     return this.approvalsService.listHistory(user.tenantId, user, query);

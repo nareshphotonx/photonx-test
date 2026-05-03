@@ -13,6 +13,7 @@ export interface ApiErrorResponse {
   statusCode: number;
   message: string;
   error: string;
+  errorCode: string;
   details?: unknown;
   requestId: string | null;
   timestamp: string;

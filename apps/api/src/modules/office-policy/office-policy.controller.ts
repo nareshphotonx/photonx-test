@@ -5,6 +5,7 @@ import {
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { type Request } from 'express';
@@ -25,6 +26,7 @@ export class OfficePolicyController {
   @Post('office-locations')
   @RequirePermissions(PERMISSIONS.OFFICE_LOCATIONS_CREATE)
   @ApiOperation({ summary: 'Create office location' })
+  @ApiBody({ type: CreateOfficeLocationDto })
   @ApiCreatedResponse({ description: 'Office location created' })
   createOfficeLocation(
     @CurrentUser() user: Express.User,
@@ -74,6 +76,9 @@ export class OfficePolicyController {
   @Get('office-policy/check')
   @RequirePermissions(PERMISSIONS.OFFICE_POLICY_CHECK)
   @ApiOperation({ summary: 'Check office policy using source IP' })
+  @ApiQuery({ name: 'ipAddress', required: false, example: '203.0.113.10' })
+  @ApiQuery({ name: 'latitude', required: false, example: 12.97 })
+  @ApiQuery({ name: 'longitude', required: false, example: 77.59 })
   @ApiOkResponse({ description: 'Policy check result' })
   checkOfficePolicy(
     @CurrentUser() user: Express.User,

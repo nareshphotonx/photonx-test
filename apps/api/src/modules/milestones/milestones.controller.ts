@@ -80,6 +80,7 @@ export class MilestonesController {
   @RequirePermissions(PERMISSIONS.MILESTONES_UPDATE)
   @ApiOperation({ summary: 'Update milestone by id' })
   @ApiParam({ name: 'id', example: 'cuid_milestone_1' })
+  @ApiBody({ type: UpdateMilestoneDto })
   @ApiOkResponse({ description: 'Milestone updated' })
   updateMilestone(
     @CurrentUser() user: Express.User,

@@ -5,6 +5,7 @@ import {
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../common/constants/permission.constants';
@@ -55,6 +56,12 @@ export class AiAgentController {
   @Get('messages')
   @RequirePermissions(PERMISSIONS.AI_MESSAGES_READ)
   @ApiOperation({ summary: 'List AI messages (own-only for USER, scoped override for admin)' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'conversationId', required: false, example: 'cuid_ai_conversation_1' })
+  @ApiQuery({ name: 'userId', required: false, example: 'cuid_user_1' })
+  @ApiQuery({ name: 'status', required: false, example: 'COMPLETED' })
+  @ApiQuery({ name: 'onlyAssistant', required: false, example: false })
   @ApiOkResponse({ description: 'AI message list' })
   listMessages(@CurrentUser() user: Express.User, @Query() query: ListAiMessagesDto) {
     return this.aiAgentService.listMessages(user.tenantId, user, query);

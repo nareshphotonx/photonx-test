@@ -1,0 +1,1 @@
+-- No-op migration folder created during local diff attempt.

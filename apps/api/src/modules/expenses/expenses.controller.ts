@@ -6,6 +6,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../common/constants/permission.constants';
@@ -65,6 +66,14 @@ export class ExpensesController {
   @Get('expenses')
   @RequirePermissions(PERMISSIONS.EXPENSES_READ)
   @ApiOperation({ summary: 'List expenses' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'status', required: false, enum: ['PENDING', 'APPROVED', 'REJECTED'] })
+  @ApiQuery({ name: 'userId', required: false, example: 'cuid_user_1' })
+  @ApiQuery({ name: 'projectId', required: false, example: 'cuid_project_1' })
+  @ApiQuery({ name: 'categoryId', required: false, example: 'cuid_expense_category_1' })
+  @ApiQuery({ name: 'from', required: false, example: '2026-07-01T00:00:00.000Z' })
+  @ApiQuery({ name: 'to', required: false, example: '2026-07-31T00:00:00.000Z' })
   @ApiOkResponse({ description: 'Expense list' })
   listExpenses(@CurrentUser() user: Express.User, @Query() query: ListExpensesDto) {
     return this.expensesService.listExpenses(user.tenantId, user, query);

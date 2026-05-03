@@ -146,6 +146,11 @@ export const PERMISSIONS = {
   REVIEWS_SUBMIT: 'reviews:submit',
   REVIEWS_APPROVE: 'reviews:approve',
 
+  AUDIT_LOGS_READ: 'audit_logs:read',
+  COMPLIANCE_DATA_EXPORT_CREATE: 'compliance:data_export:create',
+  COMPLIANCE_DATA_ERASURE_CREATE: 'compliance:data_erasure:create',
+  COMPLIANCE_REQUESTS_READ: 'compliance:requests:read',
+
   AI_CHAT: 'ai:chat',
   AI_TOOLS_READ: 'ai:tools:read',
   AI_MESSAGES_READ: 'ai:messages:read',

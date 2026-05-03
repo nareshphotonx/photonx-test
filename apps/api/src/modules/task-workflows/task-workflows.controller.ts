@@ -5,6 +5,7 @@ import {
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../common/constants/permission.constants';
@@ -32,6 +33,7 @@ export class TaskWorkflowsController {
   @Get()
   @RequirePermissions(PERMISSIONS.TASK_WORKFLOWS_READ)
   @ApiOperation({ summary: 'List task workflows for project' })
+  @ApiQuery({ name: 'projectId', required: true, example: 'cuid_project_1' })
   @ApiOkResponse({ description: 'Workflow list' })
   listWorkflows(
     @CurrentUser() user: Express.User,

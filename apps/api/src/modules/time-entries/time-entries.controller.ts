@@ -13,6 +13,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../common/constants/permission.constants';
@@ -62,6 +63,19 @@ export class TimeEntriesController {
   @Get()
   @RequirePermissions(PERMISSIONS.TIME_ENTRIES_READ)
   @ApiOperation({ summary: 'List time entries with filters' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'userId', required: false, example: 'cuid_user_1' })
+  @ApiQuery({ name: 'projectId', required: false, example: 'cuid_project_1' })
+  @ApiQuery({ name: 'taskId', required: false, example: 'cuid_task_1' })
+  @ApiQuery({
+    name: 'source',
+    required: false,
+    enum: ['MANUAL', 'WHATSAPP', 'GITHUB_PROMPT', 'MANAGER_BULK'],
+  })
+  @ApiQuery({ name: 'type', required: false, enum: ['WORK', 'ADJUSTMENT'] })
+  @ApiQuery({ name: 'from', required: false, example: '2026-05-01T00:00:00.000Z' })
+  @ApiQuery({ name: 'to', required: false, example: '2026-05-31T23:59:59.000Z' })
   @ApiOkResponse({ description: 'Paginated time entry list' })
   listTimeEntries(
     @CurrentUser() user: Express.User,
@@ -73,6 +87,10 @@ export class TimeEntriesController {
   @Get('summary')
   @RequirePermissions(PERMISSIONS.TIME_ENTRIES_SUMMARY_READ)
   @ApiOperation({ summary: 'Get daily time and cost summary' })
+  @ApiQuery({ name: 'userId', required: false, example: 'cuid_user_1' })
+  @ApiQuery({ name: 'projectId', required: false, example: 'cuid_project_1' })
+  @ApiQuery({ name: 'from', required: false, example: '2026-05-01T00:00:00.000Z' })
+  @ApiQuery({ name: 'to', required: false, example: '2026-05-31T23:59:59.000Z' })
   @ApiOkResponse({ description: 'Daily grouped time summary' })
   getSummary(
     @CurrentUser() user: Express.User,

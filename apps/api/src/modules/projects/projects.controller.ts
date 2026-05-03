@@ -15,6 +15,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../common/constants/permission.constants';
@@ -61,6 +62,11 @@ export class ProjectsController {
   @Get()
   @RequirePermissions(PERMISSIONS.PROJECTS_READ)
   @ApiOperation({ summary: 'List projects' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'search', required: false, example: 'Tenant' })
+  @ApiQuery({ name: 'status', required: false, example: 'ACTIVE' })
+  @ApiQuery({ name: 'teamId', required: false, example: 'cuid_team_1' })
   @ApiOkResponse({ description: 'Project list with pagination' })
   listProjects(@CurrentUser() user: Express.User, @Query() query: ListProjectsDto) {
     return this.projectsService.listProjects(user.tenantId, user, query);
@@ -79,6 +85,7 @@ export class ProjectsController {
   @RequirePermissions(PERMISSIONS.PROJECTS_UPDATE)
   @ApiOperation({ summary: 'Update project by id' })
   @ApiParam({ name: 'id', example: 'cuid_project_1' })
+  @ApiBody({ type: UpdateProjectDto })
   @ApiOkResponse({ description: 'Project updated' })
   updateProject(
     @CurrentUser() user: Express.User,
@@ -131,6 +138,8 @@ export class ProjectsController {
     summary: 'Get project cost burn (labor + overhead + project costs)',
   })
   @ApiParam({ name: 'id', example: 'cuid_project_1' })
+  @ApiQuery({ name: 'from', required: false, example: '2026-05-01T00:00:00.000Z' })
+  @ApiQuery({ name: 'to', required: false, example: '2026-05-31T23:59:59.000Z' })
   @ApiOkResponse({ description: 'Project cost burn with thresholds and daily breakdown' })
   getBurn(
     @CurrentUser() user: Express.User,
@@ -144,6 +153,8 @@ export class ProjectsController {
   @RequirePermissions(PERMISSIONS.PROJECTS_COST_SUMMARY_READ)
   @ApiOperation({ summary: 'Get project cost summary components and daily breakdown' })
   @ApiParam({ name: 'id', example: 'cuid_project_1' })
+  @ApiQuery({ name: 'from', required: false, example: '2026-05-01T00:00:00.000Z' })
+  @ApiQuery({ name: 'to', required: false, example: '2026-05-31T23:59:59.000Z' })
   @ApiOkResponse({ description: 'Project cost summary' })
   getCostSummary(
     @CurrentUser() user: Express.User,

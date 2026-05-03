@@ -24,4 +24,16 @@ describe('GithubSignatureService', () => {
     const ok = service.verifySignature(payload, undefined, 'super-secret');
     expect(ok).toBe(false);
   });
+
+  it('returns false for malformed signature prefix', () => {
+    const payload = Buffer.from('{"zen":"hello"}');
+    const ok = service.verifySignature(payload, 'sha1=abc', 'super-secret');
+    expect(ok).toBe(false);
+  });
+
+  it('returns false for empty secret', () => {
+    const payload = Buffer.from('{"zen":"hello"}');
+    const ok = service.verifySignature(payload, 'sha256=deadbeef', '');
+    expect(ok).toBe(false);
+  });
 });

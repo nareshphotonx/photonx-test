@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppLogger } from './common/logger/app.logger';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { PrismaModule } from './common/prisma/prisma.module';
@@ -24,6 +25,7 @@ import { ExpensesModule } from './modules/expenses/expenses.module';
 import { NotificationPreferencesModule } from './modules/notification-preferences/notification-preferences.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AiAgentModule } from './modules/ai-agent/ai-agent.module';
+import { ComplianceModule } from './modules/compliance/compliance.module';
 import { OfficePolicyModule } from './modules/office-policy/office-policy.module';
 import { HolidaysModule } from './modules/holidays/holidays.module';
 import { IntegrationsModule } from './modules/integrations/integrations.module';
@@ -55,6 +57,23 @@ import { WfhModule } from './modules/wfh/wfh.module';
       isGlobal: true,
       envFilePath: ['apps/api/.env', '.env'],
     }),
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: Number(process.env.THROTTLE_TTL_MS ?? '60000'),
+        limit: Number(process.env.THROTTLE_LIMIT ?? '120'),
+      },
+      {
+        name: 'auth',
+        ttl: Number(process.env.THROTTLE_AUTH_TTL_MS ?? '60000'),
+        limit: Number(process.env.THROTTLE_AUTH_LIMIT ?? '20'),
+      },
+      {
+        name: 'webhooks',
+        ttl: Number(process.env.THROTTLE_WEBHOOK_TTL_MS ?? '60000'),
+        limit: Number(process.env.THROTTLE_WEBHOOK_LIMIT ?? '300'),
+      },
+    ]),
     SecurityModule,
     PrismaModule,
     QueueModule,
@@ -75,6 +94,7 @@ import { WfhModule } from './modules/wfh/wfh.module';
     OfficePolicyModule,
     NotificationPreferencesModule,
     NotificationsModule,
+    ComplianceModule,
     ProjectsModule,
     MilestonesModule,
     TaskStatusesModule,
@@ -93,6 +113,10 @@ import { WfhModule } from './modules/wfh/wfh.module';
   ],
   providers: [
     AppLogger,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

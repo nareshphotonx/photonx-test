@@ -15,6 +15,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../common/constants/permission.constants';
@@ -35,6 +36,7 @@ export class UsersController {
   @Post()
   @RequirePermissions(PERMISSIONS.USERS_CREATE)
   @ApiOperation({ summary: 'Create user in current tenant' })
+  @ApiBody({ type: CreateUserDto })
   @ApiCreatedResponse({ description: 'User created' })
   createUser(
     @CurrentUser() user: Express.User,
@@ -46,6 +48,12 @@ export class UsersController {
   @Get()
   @RequirePermissions(PERMISSIONS.USERS_READ)
   @ApiOperation({ summary: 'List users in current tenant' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'search', required: false, example: 'john' })
+  @ApiQuery({ name: 'isActive', required: false, example: true })
+  @ApiQuery({ name: 'teamId', required: false, example: 'cuid_team_1' })
+  @ApiQuery({ name: 'includeDeleted', required: false, example: false })
   @ApiOkResponse({ description: 'Users list with pagination' })
   listUsers(@CurrentUser() user: Express.User, @Query() query: ListUsersDto) {
     return this.usersService.listUsers(user.tenantId, query);
@@ -64,6 +72,7 @@ export class UsersController {
   @RequirePermissions(PERMISSIONS.USERS_UPDATE)
   @ApiOperation({ summary: 'Update user by id in current tenant' })
   @ApiParam({ name: 'id', example: 'ckx123user' })
+  @ApiBody({ type: UpdateUserDto })
   @ApiOkResponse({ description: 'User updated' })
   updateUser(
     @CurrentUser() user: Express.User,
@@ -85,27 +94,7 @@ export class UsersController {
   @Post('import')
   @RequirePermissions(PERMISSIONS.USERS_IMPORT)
   @ApiOperation({ summary: 'Import users with batch upsert behavior' })
-  @ApiBody({
-    type: Object,
-    examples: {
-      default: {
-        value: {
-          users: [
-            {
-              name: 'Imported User 1',
-              email: 'import1@acme.com',
-              password: 'ImportPass@123',
-            },
-            {
-              name: 'Imported User 2',
-              phone: '+918888888888',
-              password: 'ImportPass@123',
-            },
-          ],
-        },
-      },
-    },
-  })
+  @ApiBody({ type: ImportUsersDto })
   @ApiOkResponse({ description: 'Import result with partial successes and errors' })
   importUsers(
     @CurrentUser() user: Express.User,

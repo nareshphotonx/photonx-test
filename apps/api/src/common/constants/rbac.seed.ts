@@ -611,6 +611,26 @@ export const DEFAULT_PERMISSION_DEFINITIONS: Array<{
     name: 'Approve Reviews',
     description: 'Approve submitted review entries',
   },
+  {
+    code: PERMISSIONS.AUDIT_LOGS_READ,
+    name: 'Read Audit Logs',
+    description: 'Read tenant audit logs',
+  },
+  {
+    code: PERMISSIONS.COMPLIANCE_DATA_EXPORT_CREATE,
+    name: 'Create Compliance Data Export Requests',
+    description: 'Create self-service data export requests',
+  },
+  {
+    code: PERMISSIONS.COMPLIANCE_DATA_ERASURE_CREATE,
+    name: 'Create Compliance Data Erasure Requests',
+    description: 'Create self-service data erasure requests',
+  },
+  {
+    code: PERMISSIONS.COMPLIANCE_REQUESTS_READ,
+    name: 'Read Compliance Requests',
+    description: 'Read compliance requests in allowed scope',
+  },
 ];
 
 export const DEFAULT_ROLE_PERMISSION_CODES: Record<Role, PermissionCode[]> = {
@@ -733,6 +753,9 @@ export const DEFAULT_ROLE_PERMISSION_CODES: Record<Role, PermissionCode[]> = {
     PERMISSIONS.REVIEWS_CREATE,
     PERMISSIONS.REVIEWS_READ,
     PERMISSIONS.REVIEWS_SUBMIT,
+    PERMISSIONS.COMPLIANCE_DATA_EXPORT_CREATE,
+    PERMISSIONS.COMPLIANCE_DATA_ERASURE_CREATE,
+    PERMISSIONS.COMPLIANCE_REQUESTS_READ,
     PERMISSIONS.AI_CHAT,
     PERMISSIONS.AI_TOOLS_READ,
     PERMISSIONS.AI_MESSAGES_READ,
@@ -781,6 +804,9 @@ export const DEFAULT_ROLE_PERMISSION_CODES: Record<Role, PermissionCode[]> = {
     PERMISSIONS.DASHBOARD_PROJECT_READ,
     PERMISSIONS.REVIEW_CYCLES_READ,
     PERMISSIONS.REVIEWS_READ,
+    PERMISSIONS.COMPLIANCE_DATA_EXPORT_CREATE,
+    PERMISSIONS.COMPLIANCE_DATA_ERASURE_CREATE,
+    PERMISSIONS.COMPLIANCE_REQUESTS_READ,
     PERMISSIONS.AI_CHAT,
     PERMISSIONS.AI_TOOLS_READ,
     PERMISSIONS.AI_MESSAGES_READ,

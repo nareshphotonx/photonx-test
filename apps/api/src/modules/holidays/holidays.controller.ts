@@ -6,6 +6,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../common/constants/permission.constants';
@@ -34,6 +35,10 @@ export class HolidaysController {
   @Get()
   @RequirePermissions(PERMISSIONS.HOLIDAYS_READ)
   @ApiOperation({ summary: 'List holidays' })
+  @ApiQuery({ name: 'from', required: false, example: '2026-01-01T00:00:00.000Z' })
+  @ApiQuery({ name: 'to', required: false, example: '2026-12-31T00:00:00.000Z' })
+  @ApiQuery({ name: 'locationId', required: false, example: 'cuid_location_1' })
+  @ApiQuery({ name: 'isOptional', required: false, example: true })
   @ApiOkResponse({ description: 'Holiday list' })
   listHolidays(@CurrentUser() user: Express.User, @Query() query: ListHolidaysDto) {
     return this.holidaysService.listHolidays(user.tenantId, query);
@@ -66,6 +71,13 @@ export class HolidaysController {
   @RequirePermissions(PERMISSIONS.HOLIDAYS_CLAIM_OPTIONAL)
   @ApiOperation({ summary: 'Claim optional holiday for current user' })
   @ApiParam({ name: 'id', example: 'cuid_holiday_1' })
+  @ApiBody({
+    required: false,
+    schema: {
+      type: 'object',
+      properties: {},
+    },
+  })
   @ApiOkResponse({ description: 'Optional holiday claimed' })
   claimOptionalHoliday(@CurrentUser() user: Express.User, @Param('id') id: string) {
     return this.holidaysService.claimOptionalHoliday(user.tenantId, user, id);

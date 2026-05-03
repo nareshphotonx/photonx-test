@@ -5,6 +5,7 @@ import {
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../common/constants/permission.constants';
@@ -46,6 +47,12 @@ export class ReviewCyclesController {
   @Get()
   @RequirePermissions(PERMISSIONS.REVIEW_CYCLES_READ)
   @ApiOperation({ summary: 'List review cycles' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'search', required: false, example: 'May 2026' })
+  @ApiQuery({ name: 'year', required: false, example: 2026 })
+  @ApiQuery({ name: 'month', required: false, example: 5 })
+  @ApiQuery({ name: 'status', required: false, enum: ['DRAFT', 'OPEN', 'CLOSED'] })
   @ApiOkResponse({
     description: 'Review cycle list',
     example: {

@@ -15,6 +15,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../common/constants/permission.constants';
@@ -35,6 +36,7 @@ export class TeamsController {
   @Post()
   @RequirePermissions(PERMISSIONS.TEAMS_CREATE)
   @ApiOperation({ summary: 'Create team in tenant' })
+  @ApiBody({ type: CreateTeamDto })
   @ApiCreatedResponse({ description: 'Team created' })
   createTeam(@CurrentUser() user: Express.User, @Body() dto: CreateTeamDto) {
     return this.teamsService.createTeam(user.tenantId, user.sub, dto);
@@ -43,6 +45,9 @@ export class TeamsController {
   @Get()
   @RequirePermissions(PERMISSIONS.TEAMS_READ)
   @ApiOperation({ summary: 'List teams in tenant' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'search', required: false, example: 'Core' })
   @ApiOkResponse({ description: 'Team list' })
   listTeams(@CurrentUser() user: Express.User, @Query() query: ListTeamsDto) {
     return this.teamsService.listTeams(user.tenantId, query);
@@ -61,6 +66,7 @@ export class TeamsController {
   @RequirePermissions(PERMISSIONS.TEAMS_UPDATE)
   @ApiOperation({ summary: 'Update team by id' })
   @ApiParam({ name: 'id', example: 'ckx_team_1' })
+  @ApiBody({ type: UpdateTeamDto })
   @ApiOkResponse({ description: 'Team updated' })
   updateTeam(
     @CurrentUser() user: Express.User,

@@ -15,6 +15,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PERMISSIONS } from '../../common/constants/permission.constants';
@@ -49,6 +50,14 @@ export class TasksController {
   @Get()
   @RequirePermissions(PERMISSIONS.TASKS_READ)
   @ApiOperation({ summary: 'List tasks' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'projectId', required: false, example: 'cuid_project_1' })
+  @ApiQuery({ name: 'assigneeId', required: false, example: 'cuid_user_1' })
+  @ApiQuery({ name: 'statusId', required: false, example: 'cuid_status_1' })
+  @ApiQuery({ name: 'milestoneId', required: false, example: 'cuid_milestone_1' })
+  @ApiQuery({ name: 'search', required: false, example: 'workflow' })
+  @ApiQuery({ name: 'includeSubtasks', required: false, example: true })
   @ApiOkResponse({ description: 'Task list with pagination' })
   listTasks(@CurrentUser() user: Express.User, @Query() query: ListTasksDto) {
     return this.tasksService.listTasks(user.tenantId, user, query);
@@ -57,6 +66,9 @@ export class TasksController {
   @Get('kanban')
   @RequirePermissions(PERMISSIONS.TASKS_KANBAN_READ)
   @ApiOperation({ summary: 'Get kanban board grouped by statuses' })
+  @ApiQuery({ name: 'projectId', required: true, example: 'cuid_project_1' })
+  @ApiQuery({ name: 'assigneeId', required: false, example: 'cuid_user_1' })
+  @ApiQuery({ name: 'teamId', required: false, example: 'cuid_team_1' })
   @ApiOkResponse({ description: 'Kanban columns with tasks' })
   getKanban(@CurrentUser() user: Express.User, @Query() query: GetTaskKanbanDto) {
     return this.tasksService.getKanban(user.tenantId, user, query);
@@ -84,6 +96,7 @@ export class TasksController {
   @RequirePermissions(PERMISSIONS.TASKS_UPDATE)
   @ApiOperation({ summary: 'Update task by id' })
   @ApiParam({ name: 'id', example: 'cuid_task_1' })
+  @ApiBody({ type: UpdateTaskDto })
   @ApiOkResponse({ description: 'Task updated' })
   updateTask(
     @CurrentUser() user: Express.User,
@@ -174,6 +187,8 @@ export class TasksController {
   @RequirePermissions(PERMISSIONS.TASKS_COMMENTS_READ)
   @ApiOperation({ summary: 'List task comments' })
   @ApiParam({ name: 'id', example: 'cuid_task_1' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
   @ApiOkResponse({ description: 'Comment list with pagination' })
   listComments(
     @CurrentUser() user: Express.User,
